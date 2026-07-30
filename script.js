@@ -445,12 +445,10 @@ function renderPresupuesto() {
   const cont = document.getElementById("presupuestoLista");
   cont.innerHTML = "";
 
-  const total = presupuestos
-    .filter(p => esActivo(p))
-    .reduce((s, p) => s + Number(p.monto_presupuestado), 0);
-  document.getElementById("presupuestoTotalTexto").textContent = formatoCOP(total);
-
   const ordenados = [...presupuestos].sort((a, b) => a.categoria.localeCompare(b.categoria));
+
+  const total = ordenados.reduce((s, p) => s + Number(p.monto_presupuestado || 0), 0);
+  document.getElementById("presupuestoTotalTexto").textContent = formatoCOP(total);
 
   ordenados.forEach(p => {
     const meta = metaCategoria(p.categoria);
