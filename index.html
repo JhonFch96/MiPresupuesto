@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Mi Presupuesto - Tablero de Hipótesis</title>
+  <!-- Google Fonts - Inter & Outfit for modern, clean typography -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <!-- Stylesheet link -->
+  <link rel="stylesheet" href="styles.css">
+  <!-- Supabase CDN Client -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+
+  <!-- Main App Wrapper for Mobile/Desktop layout -->
+  <div class="app-wrapper">
+    
+    <!-- Top Header -->
+    <header class="app-header">
+      <div class="header-left">
+        <!-- Crisp inline SVG for budget wallet icon -->
+        <svg class="header-logo" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="2" y="4" width="20" height="16" rx="2"></rect>
+          <path d="M12 11h.01"></path>
+          <path d="M16 8h-8a2 2 0 0 0-2 2v4a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2v-4a2 2 0 0 0-2-2z"></path>
+        </svg>
+        <span class="app-title" id="main-app-title">Mi Presupuesto</span>
+      </div>
+      <div class="header-right">
+        <!-- Quick add button as in first wireframe -->
+        <button class="header-add-btn" id="btn-quick-add" aria-label="Nuevo Movimiento">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="12" y1="5" x2="12" y2="19"></line>
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+          </svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- Main Content Viewport -->
+    <main class="app-content">
+
+      <!-- ================= VIEW 1: GASTOS (MAIN DASHBOARD) ================= -->
+      <section class="app-view active" id="view-gastos">
+        
+        <!-- Summary Dashboard Card -->
+        <div class="dashboard-card">
+          <span class="dashboard-label">GASTOS DE ESTE MES</span>
+          <h1 class="dashboard-amount" id="dashboard-spent-amount">$0</h1>
+          
+          <div class="dashboard-progress-container">
+            <div class="dashboard-progress-bar">
+              <div class="dashboard-progress-fill" id="dashboard-progress-fill" style="width: 0%;"></div>
+            </div>
+            <span class="dashboard-percent" id="dashboard-progress-percent">0%</span>
+          </div>
+          
+          <div class="dashboard-subtotals">
+            <div class="subtotal-item">
+              <span class="subtotal-label">Presupuestado</span>
+              <span class="subtotal-val" id="dashboard-budgeted-total">$0</span>
+            </div>
+            <div class="subtotal-divider"></div>
+            <div class="subtotal-item">
+              <span class="subtotal-label">Disponible</span>
+              <span class="subtotal-val" id="dashboard-available-total">$0</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Horizontal Scrollable Category Filter -->
+        <div class="category-filters-wrapper">
+          <div class="category-filters-container" id="category-filters-container">
+            <!-- Rendered dynamically, e.g. "Todas", "Servicios", etc. -->
+          </div>
+        </div>
+
+        <!-- Section Title with Date Filter -->
+        <div class="section-header">
+          <span class="section-title">RECIENTES</span>
+          <button class="icon-btn" id="btn-toggle-type-filter" title="Filtrar por tipo (Ingresos/Gastos)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon>
+            </svg>
+          </button>
+        </div>
+
+        <!-- Movements List -->
+        <div class="movements-list-container" id="movements-list-container">
+          <!-- Rendered dynamically from script.js -->
+        </div>
+
+        <!-- Empty State Container -->
+        <div class="empty-state" id="movements-empty-state" style="display: none;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+            <line x1="9" y1="9" x2="15" y2="9"></line>
+            <line x1="9" y1="13" x2="15" y2="13"></line>
+            <line x1="9" y1="17" x2="13" y2="17"></line>
+          </svg>
+          <p>No se encontraron movimientos registrados.</p>
+        </div>
+
+        <div class="end-list-tag">
+          <div class="end-list-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+              <line x1="9" y1="9" x2="15" y2="9"></line>
+              <line x1="9" y1="13" x2="15" y2="13"></line>
+            </svg>
+          </div>
+          <span>Fin de la lista</span>
+        </div>
+
+        <!-- Floating Action Button (FAB) as in wireframe -->
+        <button class="fab" id="fab-add-expense" aria-label="Nuevo Movimiento">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="12" y1="5" x2="12" y2="19"></line>
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+          </svg>
+        </button>
+      </section>
+
+      <!-- ================= VIEW 2: PRESUPUESTO ================= -->
+      <section class="app-view" id="view-presupuesto">
+        <div class="view-header">
+          <h2 class="view-title">Presupuesto Mensual</h2>
+          <p class="view-subtitle">Define tus límites de gasto mensual por categoría.</p>
+        </div>
+
+        <!-- Total Budget Summary Card -->
+        <div class="budget-summary-card">
+          <div class="budget-stat">
+            <span class="stat-label">Total Presupuestado</span>
+            <span class="stat-value" id="budget-total-amount">$0</span>
+          </div>
+          <div class="budget-stat">
+            <span class="stat-label">Gasto Ejecutado</span>
+            <span class="stat-value" id="budget-spent-amount">$0</span>
+          </div>
+        </div>
+
+        <!-- Budget Categories Grid -->
+        <div class="budget-grid" id="budget-items-container">
+          <!-- Rendered dynamically from script.js -->
+        </div>
+      </section>
+
+      <!-- ================= VIEW 3: ESTADÍSTICAS ================= -->
+      <section class="app-view" id="view-estadisticas">
+        <div class="view-header">
+          <h2 class="view-title">Análisis Financiero</h2>
+          <p class="view-subtitle">Visualiza la ejecución mensual y balance de tus cuentas.</p>
+        </div>
+
+        <!-- Financial Balance Summary -->
+        <div class="stats-summary-grid">
+          <div class="stats-summary-card income">
+            <span class="stats-card-label">INGRESOS</span>
+            <span class="stats-card-value" id="stats-total-income">$0</span>
+          </div>
+          <div class="stats-summary-card expense">
+            <span class="stats-card-label">GASTOS</span>
+            <span class="stats-card-value" id="stats-total-expense">$0</span>
+          </div>
+          <div class="stats-summary-card balance">
+            <span class="stats-card-label">DISPONIBLE (SALDO)</span>
+            <span class="stats-card-value" id="stats-total-balance">$0</span>
+          </div>
+        </div>
+
+        <!-- Budget Execution Header -->
+        <div class="section-header" style="margin-top: 1.5rem;">
+          <span class="section-title">EJECUCIÓN POR CATEGORÍA</span>
+        </div>
+
+        <!-- Pure CSS execution charts and breakdown list -->
+        <div class="stats-breakdown-card">
+          <div class="stats-breakdown-list" id="stats-breakdown-list">
+            <!-- Rendered dynamically -->
+          </div>
+        </div>
+      </section>
+
+      <!-- ================= VIEW 4: PERFIL & CONFIGURACIÓN ================= -->
+      <section class="app-view" id="view-perfil">
+        <div class="view-header">
+          <h2 class="view-title">Mi Cuenta</h2>
+          <p class="view-subtitle">Configura tus integraciones y base de datos.</p>
+        </div>
+
+        <!-- Sync status banner -->
+        <div class="sync-status-banner local" id="supabase-sync-status">
+          <div class="status-dot"></div>
+          <span id="sync-status-text">Usando base de datos local (Offline)</span>
+        </div>
+
+        <!-- Supabase Configuration Card -->
+        <div class="settings-card">
+          <h3 class="settings-card-title">Persistencia en Supabase</h3>
+          <p class="settings-card-desc">Sincroniza tus ingresos, gastos y presupuestos en tiempo real con una base de datos de Supabase.</p>
+          
+          <form id="form-supabase-config">
+            <div class="form-group">
+              <label class="form-label" for="supabase-url">Supabase URL</label>
+              <input type="url" id="supabase-url" class="form-input" placeholder="https://xxxxxx.supabase.co" required>
+            </div>
+            
+            <div class="form-group">
+              <label class="form-label" for="supabase-key">Supabase Anon Key</label>
+              <input type="password" id="supabase-key" class="form-input" placeholder="eyJhbGciOi..." required>
+            </div>
+
+            <div class="settings-actions">
+              <button type="submit" class="settings-btn-primary" id="btn-save-supabase">
+                <span>Guardar y Sincronizar</span>
+              </button>
+              <button type="button" class="settings-btn-secondary" id="btn-disconnect-supabase" style="display:none;">
+                Desconectar
+              </button>
+            </div>
+          </form>
+        </div>
+
+        <!-- System & Backup Actions Card -->
+        <div class="settings-card">
+          <h3 class="settings-card-title">Acciones del Sistema</h3>
+          <div class="system-actions-list">
+            <button class="system-btn" id="btn-reset-demo-data">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"></path>
+              </svg>
+              <span>Restablecer Presupuesto Inicial (Demo)</span>
+            </button>
+            <button class="system-btn danger" id="btn-clear-all-data">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="3 6 5 6 21 6"></polyline>
+                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                <line x1="10" y1="11" x2="10" y2="17"></line>
+                <line x1="14" y1="11" x2="14" y2="17"></line>
+              </svg>
+              <span>Borrar Todos los Datos</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- App Metadata -->
+        <div class="app-credits">
+          <p>Mi Presupuesto v1.0.0 (MVP)</p>
+          <p>Diseño premium optimizado para Glide y Lovable</p>
+        </div>
+      </section>
+
+    </main>
+
+    <!-- Bottom Navigation Bar -->
+    <nav class="bottom-nav">
+      <button class="nav-item active" data-view="gastos" aria-label="Ver Gastos">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="2" y="4" width="20" height="16" rx="2"></rect>
+          <line x1="12" y1="11" x2="12" y2="17"></line>
+          <line x1="8" y1="14" x2="16" y2="14"></line>
+        </svg>
+        <span>Gastos</span>
+      </button>
+      
+      <button class="nav-item" data-view="presupuesto" aria-label="Ver Presupuesto">
+        <!-- SVG Piggy Bank icon -->
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M19 5c-1.5 0-2.8 1.4-3 3-1-.1-2.1-.1-3 0-.2-1.6-1.5-3-3-3C8.3 5 7 6.3 7 8c-2.2 0-4 1.8-4 4 0 1.9 1.3 3.5 3 3.9v3.1c0 .6.4 1 1 1h2c.6 0 1-.4 1-1v-2h4v2c0 .6.4 1 1 1h2c.6 0 1-.4 1-1v-3.1c1.7-.4 3-2 3-3.9 0-2.2-1.8-4-4-4c0-1.7-1.3-3-3-3z"></path>
+          <path d="M12 12v-2"></path>
+          <circle cx="9" cy="10" r="1"></circle>
+        </svg>
+        <span>Presupuesto</span>
+      </button>
+      
+      <button class="nav-item" data-view="estadisticas" aria-label="Ver Estadísticas">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="18" y1="20" x2="18" y2="10"></line>
+          <line x1="12" y1="20" x2="12" y2="4"></line>
+          <line x1="6" y1="20" x2="6" y2="14"></line>
+        </svg>
+        <span>Estadísticas</span>
+      </button>
+      
+      <button class="nav-item" data-view="perfil" aria-label="Ver Perfil">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+          <circle cx="12" cy="7" r="4"></circle>
+        </svg>
+        <span>Perfil</span>
+      </button>
+    </nav>
+  </div>
+
+  <!-- ================= MODAL 1: NUEVO / EDITAR MOVIMIENTO ================= -->
+  <div class="modal-overlay" id="modal-transaction-form">
+    <div class="modal-container">
+      <div class="modal-header">
+        <button class="modal-close-btn" id="btn-close-transaction-modal" aria-label="Cerrar modal">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+        <h3 class="modal-title" id="transaction-modal-title">Nuevo gasto</h3>
+        <span class="draft-badge">BORRADOR</span>
+      </div>
+
+      <form id="form-transaction">
+        <input type="hidden" id="trans-id">
+        <input type="hidden" id="trans-action-type" value="create"> <!-- create or edit -->
+
+        <div class="modal-body">
+          
+          <!-- Amount input -->
+          <div class="amount-input-group">
+            <label class="amount-label" for="trans-val">MONTO</label>
+            <div class="amount-input-row">
+              <span class="amount-currency">$</span>
+              <input type="number" id="trans-val" class="amount-field" placeholder="0.00" min="1" step="any" required>
+            </div>
+          </div>
+
+          <!-- Title Input -->
+          <div class="form-group">
+            <label class="form-label" for="trans-desc">TÍTULO</label>
+            <input type="text" id="trans-desc" class="form-input text-highlight" placeholder="Ej. Supermercado" required>
+          </div>
+
+          <!-- Type Selection: Ingreso / Gasto -->
+          <div class="form-group">
+            <label class="form-label">TIPO</label>
+            <div class="type-selector">
+              <button type="button" class="type-btn active" id="btn-type-gasto" data-type="Gasto">Gasto</button>
+              <button type="button" class="type-btn" id="btn-type-ingreso" data-type="Ingreso">Ingreso</button>
+            </div>
+            <input type="hidden" id="trans-tipo" value="Gasto">
+          </div>
+
+          <!-- Category Badges Selection -->
+          <div class="form-group">
+            <div class="form-label-row">
+              <label class="form-label">CATEGORÍA</label>
+              <button type="button" class="form-link-btn" id="btn-view-all-categories">Ver todas</button>
+            </div>
+            <div class="category-selector-grid" id="modal-category-grid">
+              <!-- Rendered dynamically as category badges -->
+            </div>
+            <input type="hidden" id="trans-categoria" value="" required>
+          </div>
+
+          <!-- Extra details section -->
+          <div class="details-cards-row">
+            <!-- Date card selector -->
+            <div class="details-card-btn" id="card-date-picker">
+              <div class="details-card-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                  <line x1="16" y1="2" x2="16" y2="6"></line>
+                  <line x1="8" y1="2" x2="8" y2="6"></line>
+                  <line x1="3" y1="10" x2="21" y2="10"></line>
+                </svg>
+              </div>
+              <div class="details-card-info">
+                <span class="details-card-label">FECHA</span>
+                <span class="details-card-value" id="label-selected-date">Hoy, 24 Oct</span>
+                <input type="date" id="trans-fecha" style="display:none;" required>
+              </div>
+            </div>
+
+            <!-- Receipt attachment card placeholder -->
+            <div class="details-card-btn" id="card-receipt-uploader">
+              <div class="details-card-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                  <polyline points="17 8 12 3 7 8"></polyline>
+                  <line x1="12" y1="3" x2="12" y2="15"></line>
+                </svg>
+              </div>
+              <div class="details-card-info">
+                <span class="details-card-label">RECIBO / COMPROBANTE</span>
+                <span class="details-card-value" id="label-receipt-status">Adjuntar URL</span>
+                <input type="url" id="trans-comprobante-url" style="display:none;" placeholder="https://ejemplo.com/recibo.jpg">
+              </div>
+            </div>
+          </div>
+
+          <!-- Estado selector (Pagado vs Pendiente) -->
+          <div class="form-group" style="margin-top: 1rem;">
+            <label class="form-label">ESTADO</label>
+            <div class="state-selector-row">
+              <label class="state-radio-label">
+                <input type="radio" name="trans-estado" value="Pagado" checked>
+                <span class="state-radio-custom bg-pagado">Pagado</span>
+              </label>
+              <label class="state-radio-label">
+                <input type="radio" name="trans-estado" value="Pendiente">
+                <span class="state-radio-custom bg-pendiente">Pendiente</span>
+              </label>
+            </div>
+          </div>
+
+          <!-- Observations long text -->
+          <div class="form-group">
+            <label class="form-label" for="trans-observaciones">OBSERVACIONES</label>
+            <textarea id="trans-observaciones" class="form-input text-area" placeholder="Detalles de la compra, cuotas, etc."></textarea>
+          </div>
+
+        </div>
+
+        <div class="modal-footer">
+          <button type="submit" class="modal-save-btn" id="btn-save-transaction">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="btn-check-icon">
+              <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
+            <span id="btn-save-transaction-text">Guardar gasto</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ================= MODAL 2: DETALLE DEL MOVIMIENTO ================= -->
+  <div class="modal-overlay" id="modal-transaction-detail">
+    <div class="modal-container dark-header">
+      <div class="modal-header header-green">
+        <button class="modal-back-btn btn-close-detail" aria-label="Regresar">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <line x1="19" y1="12" x2="5" y2="12"></line>
+            <polyline points="12 19 5 12 12 5"></polyline>
+          </svg>
+        </button>
+        <h3 class="modal-title light-text" id="detail-title">Netflix</h3>
+        
+        <!-- Options menu inside detail -->
+        <div class="detail-menu-dropdown-container">
+          <button class="modal-options-btn" id="btn-detail-options" aria-label="Opciones">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <circle cx="12" cy="12" r="1"></circle>
+              <circle cx="12" cy="5" r="1"></circle>
+              <circle cx="12" cy="19" r="1"></circle>
+            </svg>
+          </button>
+          <div class="options-dropdown" id="detail-options-dropdown" style="display: none;">
+            <button type="button" class="dropdown-item" id="btn-detail-edit">Editar</button>
+            <button type="button" class="dropdown-item danger" id="btn-detail-delete">Eliminar</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-body bg-light-gray" style="padding-top: 1rem;">
+        
+        <!-- Gasto Total Panel -->
+        <div class="detail-amount-panel">
+          <div class="amount-panel-info">
+            <span class="amount-panel-label" id="detail-val-label">TOTAL DEL GASTO</span>
+            <h2 class="amount-panel-value" id="detail-val-text">$15.990</h2>
+            <div class="detail-badges-row">
+              <span class="detail-badge" id="detail-category-badge">Suscripciones</span>
+              <span class="detail-badge" id="detail-date-badge">15 Octubre, 2026</span>
+              <span class="detail-badge" id="detail-state-badge">Pagado</span>
+            </div>
+          </div>
+          <div class="amount-panel-icon-box" id="detail-category-icon-box">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"></rect>
+              <line x1="7" y1="2" x2="7" y2="22"></line>
+              <line x1="17" y1="2" x2="17" y2="22"></line>
+              <line x1="2" y1="12" x2="22" y2="12"></line>
+              <line x1="2" y1="7" x2="7" y2="7"></line>
+              <line x1="2" y1="17" x2="7" y2="17"></line>
+              <line x1="17" y1="17" x2="22" y2="17"></line>
+              <line x1="17" y1="7" x2="22" y2="7"></line>
+            </svg>
+          </div>
+        </div>
+
+        <!-- Description Box -->
+        <div class="detail-section">
+          <span class="detail-section-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="section-title-icon">
+              <line x1="21" y1="10" x2="3" y2="10"></line>
+              <line x1="21" y1="6" x2="3" y2="6"></line>
+              <line x1="21" y1="14" x2="3" y2="14"></line>
+              <line x1="21" y1="18" x2="3" y2="18"></line>
+            </svg>
+            DESCRIPCIÓN
+          </span>
+          <div class="detail-description-box" id="detail-desc-text">
+            Pago mensual del plan familiar de Netflix. Incluye acceso a 4 pantallas simultáneas y calidad Ultra HD.
+          </div>
+        </div>
+
+        <!-- Category Budget Execution Details -->
+        <div class="detail-section budget-context-card">
+          <span class="detail-section-title">PRESUPUESTO DE CATEGORÍA</span>
+          <div class="budget-context-header">
+            <span class="budget-context-category" id="detail-budget-cat-name">Suscripciones • Julio</span>
+            <span class="budget-context-percent" id="detail-budget-percent-val">15%</span>
+          </div>
+          <div class="budget-context-progress-bar">
+            <div class="budget-context-progress-fill" id="detail-budget-progress-fill" style="width: 15%;"></div>
+          </div>
+          <div class="budget-context-footer">
+            <span>Gasto Actual: <strong id="detail-budget-spent-val">$15.990</strong></span>
+            <span>Límite: <strong id="detail-budget-limit-val">$200.000</strong></span>
+          </div>
+        </div>
+
+        <!-- Meta Grid Cards (Observaciones, Frecuencia, etc.) -->
+        <div class="detail-meta-cards-grid">
+          <!-- Recibo / Comprobante view -->
+          <div class="meta-card clickable-meta" id="btn-view-receipt">
+            <div class="meta-card-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                <polyline points="14 2 14 8 20 8"></polyline>
+                <line x1="16" y1="13" x2="8" y2="13"></line>
+                <line x1="16" y1="17" x2="8" y2="17"></line>
+                <polyline points="10 9 9 9 8 9"></polyline>
+              </svg>
+            </div>
+            <div class="meta-card-info">
+              <span class="meta-card-label">COMPROBANTE</span>
+              <span class="meta-card-value text-ellipsis" id="detail-receipt-value">Ver archivo</span>
+            </div>
+          </div>
+
+          <!-- Observaciones quick card -->
+          <div class="meta-card">
+            <div class="meta-card-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+              </svg>
+            </div>
+            <div class="meta-card-info">
+              <span class="meta-card-label">OBSERVACIONES</span>
+              <span class="meta-card-value text-ellipsis" id="detail-notes-value">Sin observaciones</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="modal-footer" style="background-color: var(--light-bg); border-top: 1px solid var(--border-color);">
+        <button type="button" class="detail-save-btn btn-close-detail">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="btn-check-icon">
+            <polyline points="20 6 9 17 4 12"></polyline>
+          </svg>
+          Listo
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= MODAL 3: CONFIRMACIÓN DE ELIMINACIÓN ================= -->
+  <div class="modal-overlay" id="modal-delete-confirm" style="z-index: 2000;">
+    <div class="modal-container" style="max-width: 360px; margin-top: 20vh;">
+      <div class="modal-header">
+        <h3 class="modal-title" style="color: var(--error-color);">¿Eliminar movimiento?</h3>
+      </div>
+      <div class="modal-body">
+        <p style="font-size: 0.95rem; color: var(--text-color); line-height: 1.5;">
+          ¿Estás seguro de que deseas eliminar permanentemente este registro? Esta acción actualizará tu ejecución presupuestal y no se puede deshacer.
+        </p>
+      </div>
+      <div class="modal-footer" style="display: flex; gap: 0.5rem; justify-content: flex-end;">
+        <button type="button" class="cancel-delete-btn" id="btn-cancel-delete">Cancelar</button>
+        <button type="button" class="confirm-delete-btn" id="btn-confirm-delete">Eliminar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= MODAL 4: EDITAR PRESUPUESTO CATEGORÍA ================= -->
+  <div class="modal-overlay" id="modal-edit-budget">
+    <div class="modal-container" style="max-width: 380px; margin-top: 15vh;">
+      <div class="modal-header">
+        <button class="modal-close-btn" id="btn-close-budget-modal" aria-label="Cerrar modal">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+        <h3 class="modal-title">Editar Presupuesto</h3>
+      </div>
+      <form id="form-edit-budget">
+        <input type="hidden" id="budget-cat-id">
+        <div class="modal-body">
+          <p style="margin-bottom: 1rem; font-size: 0.9rem; color: var(--text-muted-color);">
+            Modifica el límite de gasto mensual asignado a la categoría <strong id="budget-cat-name-label">Mercado</strong>.
+          </p>
+          <div class="form-group">
+            <label class="form-label" for="budget-cat-amount-input">MONTO PRESUPUESTADO ($)</label>
+            <input type="number" id="budget-cat-amount-input" class="form-input text-highlight" min="0" step="any" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">ESTADO</label>
+            <div class="state-selector-row">
+              <label class="state-radio-label">
+                <input type="radio" name="budget-cat-activo" value="Si" checked>
+                <span class="state-radio-custom bg-pagado">Activo</span>
+              </label>
+              <label class="state-radio-label">
+                <input type="radio" name="budget-cat-activo" value="No">
+                <span class="state-radio-custom bg-pendiente">Inactivo</span>
+              </label>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="submit" class="modal-save-btn">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="btn-check-icon">
+              <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
+            Actualizar presupuesto
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ================= NOTIFICATION TOAST BANNER ================= -->
+  <div class="toast-banner" id="app-toast-alert">
+    <div class="toast-icon" id="app-toast-icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+        <polyline points="20 6 9 17 4 12"></polyline>
+      </svg>
+    </div>
+    <span class="toast-text" id="app-toast-text">¡Acción realizada con éxito!</span>
+  </div>
+
+  <!-- Main JavaScript Logic Link -->
+  <script src="script.js"></script>
+</body>
+</html>
