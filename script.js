@@ -7,15 +7,15 @@
    2. En el editor SQL, crea las tablas con:
 
    create table presupuesto (
-     id_presupuesto text primary key,
+     id_presupuesto uuid primary key default gen_random_uuid(),
      categoria text not null,
      monto_presupuestado numeric not null default 0,
-     activo text not null default 'Si',
+     activo boolean not null default true,
      fecha_creacion date not null default current_date
    );
 
    create table movimientos (
-     id_movimiento text primary key,
+     id_movimiento uuid primary key default gen_random_uuid(),
      fecha date not null,
      tipo text not null,
      categoria text not null,
@@ -142,12 +142,19 @@ function hoyISO() {
   return new Date().toISOString().slice(0, 10);
 }
 
-function generarId(prefijo, lista, campoId) {
-  const nums = lista
-    .map(item => parseInt(String(item[campoId]).replace(/\D/g, ""), 10))
-    .filter(n => !isNaN(n));
-  const siguiente = (nums.length ? Math.max(...nums) : 0) + 1;
-  return `${prefijo}${String(siguiente).padStart(3, "0")}`;
+function generarUUID() {
+  if (window.crypto && crypto.randomUUID) return crypto.randomUUID();
+  // Fallback UUID v4 simple para navegadores sin crypto.randomUUID
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, c => {
+    const r = (Math.random() * 16) | 0;
+    const v = c === "x" ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+}
+
+function esActivo(p) {
+  // Compatibilidad: Supabase guarda boolean, versiones anteriores en localStorage guardaban "Si"
+  return p.activo === true || p.activo === "Si";
 }
 
 function metaCategoria(cat) {
@@ -237,11 +244,11 @@ async function iniciar() {
     presupuestos = await db.cargarPresupuesto();
 
     if (presupuestos.length === 0) {
-      presupuestos = CATEGORIAS.map((cat, i) => ({
-        id_presupuesto: `PRE${String(i + 1).padStart(3, "0")}`,
+      presupuestos = CATEGORIAS.map(cat => ({
+        id_presupuesto: generarUUID(),
         categoria: cat,
         monto_presupuestado: PRESUPUESTO_PRECARGA[cat] || 0,
-        activo: "Si",
+        activo: true,
         fecha_creacion: hoyISO()
       }));
       await db.guardarPresupuestoCompleto(presupuestos);
@@ -258,10 +265,10 @@ async function iniciar() {
     if (faltantes.length > 0) {
       for (const cat of faltantes) {
         const nueva = {
-          id_presupuesto: generarId("PRE", presupuestos, "id_presupuesto"),
+          id_presupuesto: generarUUID(),
           categoria: cat,
           monto_presupuestado: PRESUPUESTO_PRECARGA[cat] || 0,
-          activo: "Si",
+          activo: true,
           fecha_creacion: hoyISO()
         };
         presupuestos.push(nueva);
@@ -364,7 +371,7 @@ function calcularTotales() {
   const ingresos = movimientos.filter(m => m.tipo === "Ingreso").reduce((s, m) => s + Number(m.valor), 0);
   const gastos = movimientos.filter(m => m.tipo === "Gasto").reduce((s, m) => s + Number(m.valor), 0);
   const presupuestoTotal = presupuestos
-    .filter(p => p.activo === "Si")
+    .filter(p => esActivo(p))
     .reduce((s, p) => s + Number(p.monto_presupuestado), 0);
   const saldo = ingresos - gastos;
   const ejecucionGlobal = presupuestoTotal > 0 ? (gastos / presupuestoTotal) * 100 : 0;
@@ -439,7 +446,7 @@ function renderPresupuesto() {
   cont.innerHTML = "";
 
   const total = presupuestos
-    .filter(p => p.activo === "Si")
+    .filter(p => esActivo(p))
     .reduce((s, p) => s + Number(p.monto_presupuestado), 0);
   document.getElementById("presupuestoTotalTexto").textContent = formatoCOP(total);
 
@@ -477,7 +484,7 @@ function renderEstadisticas() {
   const cont = document.getElementById("ejecucionList");
   cont.innerHTML = "";
 
-  const activos = presupuestos.filter(p => p.activo === "Si").sort((a, b) => a.categoria.localeCompare(b.categoria));
+  const activos = presupuestos.filter(p => esActivo(p)).sort((a, b) => a.categoria.localeCompare(b.categoria));
 
   activos.forEach(p => {
     const gastoCategoria = movimientos
@@ -511,7 +518,7 @@ function renderEstadisticas() {
 }
 
 function renderPerfil() {
-  document.getElementById("perfilCategorias").textContent = presupuestos.filter(p => p.activo === "Si").length;
+  document.getElementById("perfilCategorias").textContent = presupuestos.filter(p => esActivo(p)).length;
   document.getElementById("perfilMovimientos").textContent = movimientos.length;
   document.getElementById("perfilMes").textContent = nombreMesActual();
 }
@@ -657,7 +664,7 @@ async function manejarSubmitMovimiento(e) {
   const esNuevo = !id;
 
   const registro = {
-    id_movimiento: id || generarId("MOV", movimientos, "id_movimiento"),
+    id_movimiento: id || generarUUID(),
     fecha: document.getElementById("movFecha").value,
     tipo: document.getElementById("movTipo").value,
     categoria: document.getElementById("movCategoria").value,
@@ -829,10 +836,10 @@ async function manejarSubmitCategoria(e) {
   }
 
   const registro = {
-    id_presupuesto: id || generarId("PRE", presupuestos, "id_presupuesto"),
+    id_presupuesto: id || generarUUID(),
     categoria,
     monto_presupuestado: Number(document.getElementById("catMonto").value),
-    activo: "Si",
+    activo: true,
     fecha_creacion: id ? presupuestos.find(p => p.id_presupuesto === id).fecha_creacion : hoyISO()
   };
 
