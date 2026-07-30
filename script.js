@@ -1,1258 +1,856 @@
-/* ==========================================================================
-   MI PRESUPUESTO - LÓGICA DE NEGOCIO Y PERSISTENCIA (script.js)
-   Soporte para LocalStorage y Sincronización en tiempo real con Supabase.
-   ========================================================================== */
+/* =========================================================
+   Mi Presupuesto — script.js
+   =========================================================
+   CONEXIÓN A SUPABASE
+   -------------------------------------------------------
+   1. Crea un proyecto gratis en https://supabase.com
+   2. En el editor SQL, crea las tablas con:
 
-// --- CONFIGURACIÓN DE CATEGORÍAS (Colores HSL, Fondos y Iconos SVG) ---
-const CATEGORY_META = {
-  'Servicios': {
-    color: 'hsl(210, 80%, 45%)',
-    bg: 'rgba(59, 130, 246, 0.1)',
-    textBg: '#dbeafe',
-    icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path></svg>`
-  },
-  'Suscripciones': {
-    color: 'hsl(20, 85%, 55%)',
-    bg: 'rgba(249, 115, 22, 0.1)',
-    textBg: '#ffedd5',
-    icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"></rect><line x1="7" y1="2" x2="7" y2="22"></line><line x1="17" y1="2" x2="17" y2="22"></line><line x1="2" y1="12" x2="22" y2="12"></line><line x1="2" y1="7" x2="7" y2="7"></line><line x1="2" y1="17" x2="7" y2="17"></line><line x1="17" y1="17" x2="22" y2="17"></line><line x1="17" y1="7" x2="22" y2="7"></line></svg>`
-  },
-  'Moto': {
-    color: 'hsl(80, 60%, 40%)',
-    bg: 'rgba(132, 204, 22, 0.1)',
-    textBg: '#ecfccb',
-    icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="5.5" cy="17.5" r="2.5"></circle><circle cx="18.5" cy="17.5" r="2.5"></circle><path d="M15 8h1a2 2 0 0 1 2 2v2M5.5 17.5l3-9h6.5l3 9M10 8.5V11"></path></svg>`
-  },
-  'Prestamos': {
-    color: 'hsl(360, 75%, 50%)',
-    bg: 'rgba(239, 68, 68, 0.1)',
-    textBg: '#fee2e2',
-    icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>`
-  },
-  'Tarjeta de Crédito': {
-    color: 'hsl(260, 65%, 55%)',
-    bg: 'rgba(139, 92, 246, 0.1)',
-    textBg: '#f3e8ff',
-    icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>`
-  },
-  'Mercado': {
-    color: 'hsl(150, 70%, 40%)',
-    bg: 'rgba(16, 185, 129, 0.1)',
-    textBg: '#d1fae5',
-    icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>`
-  },
-  'Personal': {
-    color: 'hsl(320, 70%, 50%)',
-    bg: 'rgba(236, 72, 153, 0.1)',
-    textBg: '#fce7f3',
-    icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>`
-  },
-  'Pareja': {
-    color: 'hsl(340, 80%, 55%)',
-    bg: 'rgba(244, 63, 94, 0.1)',
-    textBg: '#ffe4e6',
-    icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>`
-  },
-  'Oficina': {
-    color: 'hsl(185, 75%, 45%)',
-    bg: 'rgba(6, 182, 212, 0.1)',
-    textBg: '#ecfeff',
-    icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path></svg>`
-  },
-  'Universidad': {
-    color: 'hsl(45, 80%, 45%)',
-    bg: 'rgba(234, 179, 8, 0.1)',
-    textBg: '#fef9c3',
-    icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"></path><path d="M6 12v5c0 2 2 3 6 3s6-1 6-3v-5"></path></svg>`
-  },
-  'Familia': {
-    color: 'hsl(170, 70%, 40%)',
-    bg: 'rgba(20, 184, 166, 0.1)',
-    textBg: '#ccfbf1',
-    icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>`
-  },
-  'Apartamento': {
-    color: 'hsl(35, 60%, 45%)',
-    bg: 'rgba(161, 98, 7, 0.1)',
-    textBg: '#fef3c7',
-    icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>`
-  }
-};
+   create table presupuesto (
+     id_presupuesto text primary key,
+     categoria text not null,
+     monto_presupuestado numeric not null default 0,
+     activo text not null default 'Si',
+     fecha_creacion date not null default current_date
+   );
 
-// Presupuesto de reserva para ingresos u otras categorías no mapeadas
-const DEFAULT_META = {
-  color: 'hsl(0, 0%, 40%)',
-  bg: 'rgba(100, 116, 139, 0.1)',
-  textBg: '#f1f5f9',
-  icon: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="16"></line><line x1="8" y1="12" x2="16" y2="12"></line></svg>`
-};
+   create table movimientos (
+     id_movimiento text primary key,
+     fecha date not null,
+     tipo text not null,
+     categoria text not null,
+     descripcion text not null,
+     valor numeric not null,
+     estado text not null default 'Pagado',
+     observaciones text,
+     comprobante_url text,
+     fecha_actualizacion date
+   );
 
-// --- PRE-CARGA DE DATOS INICIALES DEL PRODUCTO ---
-const INITIAL_BUDGET = [
-  { id_presupuesto: 'PRE001', categoria: 'Servicios', monto_presupuestado: 440000, activo: 'Si', fecha_creacion: '2026-07-29' },
-  { id_presupuesto: 'PRE002', categoria: 'Suscripciones', monto_presupuestado: 200000, activo: 'Si', fecha_creacion: '2026-07-29' },
-  { id_presupuesto: 'PRE003', categoria: 'Moto', monto_presupuestado: 100000, activo: 'Si', fecha_creacion: '2026-07-29' },
-  { id_presupuesto: 'PRE004', categoria: 'Mercado', monto_presupuestado: 400000, activo: 'Si', fecha_creacion: '2026-07-29' },
-  { id_presupuesto: 'PRE005', categoria: 'Prestamos', monto_presupuestado: 300000, activo: 'Si', fecha_creacion: '2026-07-29' },
-  { id_presupuesto: 'PRE006', categoria: 'Tarjeta de Crédito', monto_presupuestado: 0, activo: 'Si', fecha_creacion: '2026-07-29' },
-  { id_presupuesto: 'PRE007', categoria: 'Pareja', monto_presupuestado: 800000, activo: 'Si', fecha_creacion: '2026-07-29' },
-  { id_presupuesto: 'PRE008', categoria: 'Oficina', monto_presupuestado: 200000, activo: 'Si', fecha_creacion: '2026-07-29' },
-  { id_presupuesto: 'PRE009', categoria: 'Universidad', monto_presupuestado: 2000000, activo: 'Si', fecha_creacion: '2026-07-29' },
-  { id_presupuesto: 'PRE010', categoria: 'Familia', monto_presupuestado: 200000, activo: 'Si', fecha_creacion: '2026-07-29' },
-  { id_presupuesto: 'PRE011', categoria: 'Personal', monto_presupuestado: 200000, activo: 'Si', fecha_creacion: '2026-07-29' },
-  { id_presupuesto: 'PRE012', categoria: 'Apartamento', monto_presupuestado: 1120000, activo: 'Si', fecha_creacion: '2026-07-29' }
-];
+   -- Para el MVP (sin autenticación) habilita acceso público de lectura/escritura:
+   alter table presupuesto enable row level security;
+   alter table movimientos enable row level security;
+   create policy "public access" on presupuesto for all using (true) with check (true);
+   create policy "public access" on movimientos for all using (true) with check (true);
 
-const INITIAL_MOVEMENTS = [
-  {
-    id_movimiento: 'MOV001',
-    fecha: '2026-07-29',
-    tipo: 'Gasto',
-    categoria: 'Suscripciones',
-    descripcion: 'Netflix',
-    valor: 15990,
-    estado: 'Pagado',
-    observaciones: 'Pago mensual del plan familiar de Netflix. Incluye acceso a 4 pantallas simultáneas y calidad Ultra HD. Renovación automática el día 15 de cada mes.',
-    comprobante_url: 'https://images.unsplash.com/photo-1574375927938-d5a98e8edd86?w=400',
-    fecha_actualizacion: null
-  },
-  {
-    id_movimiento: 'MOV002',
-    fecha: '2026-07-29',
-    tipo: 'Gasto',
-    categoria: 'Mercado',
-    descripcion: 'Supermercado',
-    valor: 250000,
-    estado: 'Pagado',
-    observaciones: 'Compra de despensa mensual en el supermercado local. Incluye frutas, verduras, víveres y productos de aseo.',
-    comprobante_url: '',
-    fecha_actualizacion: null
-  },
-  {
-    id_movimiento: 'MOV003',
-    fecha: '2026-07-12',
-    tipo: 'Gasto',
-    categoria: 'Moto',
-    descripcion: 'Cuota Moto',
-    valor: 120000,
-    estado: 'Pagado',
-    observaciones: 'Abono a la cuota mensual del crédito de la motocicleta.',
-    comprobante_url: '',
-    fecha_actualizacion: null
-  },
-  {
-    id_movimiento: 'MOV004',
-    fecha: '2026-07-10',
-    tipo: 'Gasto',
-    categoria: 'Suscripciones',
-    descripcion: 'Spotify Family',
-    valor: 24900,
-    estado: 'Pagado',
-    observaciones: 'Plan familiar de música en streaming.',
-    comprobante_url: '',
-    fecha_actualizacion: null
-  }
-];
+   3. Copia tu Project URL y anon public key abajo en SUPABASE_URL / SUPABASE_ANON_KEY.
+      Mientras estén vacíos, la app funciona con localStorage en el navegador
+      para que puedas probarla de inmediato.
+   ========================================================= */
 
-// --- ESTADO DE LA APLICACIÓN (STATE) ---
-const appState = {
-  presupuesto: [],
-  movimientos: [],
-  activeCategoryFilter: 'Todas',
-  activeTypeFilter: 'Todos', // 'Todos', 'Ingreso', 'Gasto'
-  selectedTransactionId: null,
-  supabaseConnected: false,
-  supabaseUrl: '',
-  supabaseKey: ''
-};
+const SUPABASE_URL = "https://gvcvemixhsjqrcixtndk.supabase.co";
+const SUPABASE_ANON_KEY = "sb_publishable_5XtGzgRT5eds3fCo6iE_BA_eKlfG1ue";
 
-// Supabase Global Client
+const USE_SUPABASE = Boolean(SUPABASE_URL && SUPABASE_ANON_KEY);
+
 let supabaseClient = null;
-
-// --- UTILERÍAS ---
-function formatCurrency(amount) {
-  const num = parseFloat(amount) || 0;
-  return '$' + num.toLocaleString('es-CO', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+if (USE_SUPABASE) {
+  supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 }
 
-function formatDateDisplay(dateString) {
-  if (!dateString) return '';
-  const date = new Date(dateString + 'T00:00:00');
-  const now = new Date();
-  
-  // Format to relative "Hoy" or simple date
-  const dateReset = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-  const nowReset = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const diffTime = nowReset - dateReset;
-  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-  
-  if (diffDays === 0) return 'Hoy';
-  if (diffDays === 1) return 'Ayer';
-  
-  // Standard format like "12 Oct" or "10 Jul"
-  const options = { day: 'numeric', month: 'short' };
-  return date.toLocaleDateString('es-CO', options);
+/* ---------------------------------------------------------
+   Constantes del modelo de datos
+--------------------------------------------------------- */
+
+const CATEGORIAS = [
+  "Servicios", "Suscripciones", "Moto", "Prestamos", "Tarjeta de Credito",
+  "Mercado", "Personal", "Pareja", "Oficina", "Universidad", "Familia", "Apartamento"
+];
+
+const PRESUPUESTO_PRECARGA = {
+  "Servicios": 440000,
+  "Suscripciones": 200000,
+  "Moto": 100000,
+  "Mercado": 400000,
+  "Prestamos": 300000,
+  "Tarjeta de Credito": 0,
+  "Pareja": 800000,
+  "Oficina": 200000,
+  "Universidad": 2000000,
+  "Familia": 200000,
+  "Personal": 200000,
+  "Apartamento": 1120000
+};
+
+// Icono + color pastel por categoría, para los avatares tipo mockup
+const CAT_META = {
+  "Servicios":          { icon: "💡", bg: "#DCEAFB", fg: "#2C5C99" },
+  "Suscripciones":       { icon: "🎬", bg: "#FBE3D0", fg: "#9C5A22" },
+  "Moto":                { icon: "🏍️", bg: "#E7E9C9", fg: "#6B6B22" },
+  "Prestamos":           { icon: "🏦", bg: "#E6E0F8", fg: "#5B4499" },
+  "Tarjeta de Credito":  { icon: "💳", bg: "#FBE0EA", fg: "#A33763" },
+  "Mercado":             { icon: "🛒", bg: "#DFF3DE", fg: "#2F7A3C" },
+  "Personal":            { icon: "🙂", bg: "#E3E8ED", fg: "#3E5266" },
+  "Pareja":              { icon: "❤️", bg: "#FBDFDF", fg: "#A33131" },
+  "Oficina":             { icon: "💼", bg: "#EDE3D6", fg: "#795B2E" },
+  "Universidad":         { icon: "🎓", bg: "#E0E5FB", fg: "#3B4C99" },
+  "Familia":             { icon: "👪", bg: "#DFF3EE", fg: "#227A63" },
+  "Apartamento":         { icon: "🏠", bg: "#FBF3D0", fg: "#8A7414" }
+};
+
+const LS_PRESUPUESTO = "mp_presupuesto";
+const LS_MOVIMIENTOS = "mp_movimientos";
+
+/* ---------------------------------------------------------
+   Estado en memoria
+--------------------------------------------------------- */
+
+let presupuestos = [];
+let movimientos = [];
+let filtroCategoria = "";
+let filtroTipo = "Gasto";
+let ordenDesc = true;
+let idParaEliminar = null;
+
+/* ---------------------------------------------------------
+   Utilidades
+--------------------------------------------------------- */
+
+function formatoCOP(valor) {
+  const num = Number(valor) || 0;
+  return num.toLocaleString("es-CO", { style: "currency", currency: "COP", maximumFractionDigits: 0 });
 }
 
-function generateId(prefix = 'ID') {
-  return prefix + Math.floor(Math.random() * 900000 + 100000);
+function formatoFechaCorta(fecha) {
+  if (!fecha) return "—";
+  const hoy = hoyISO();
+  if (fecha === hoy) return "Hoy";
+  const [y, m, d] = fecha.split("-");
+  const meses = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
+  return `${d} ${meses[parseInt(m, 10) - 1]}`;
 }
 
-// Show Toast Alerts
-function showToast(message, type = 'success') {
-  const alertEl = document.getElementById('app-toast-alert');
-  const iconEl = document.getElementById('app-toast-icon');
-  const textEl = document.getElementById('app-toast-text');
-  
-  textEl.textContent = message;
-  
-  // Set icons & colors based on type
-  if (type === 'success') {
-    alertEl.style.backgroundColor = '#121416';
-    iconEl.style.backgroundColor = 'var(--accent-color)';
-    iconEl.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="var(--accent-text)" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
-  } else if (type === 'error') {
-    alertEl.style.backgroundColor = 'var(--error-color)';
-    iconEl.style.backgroundColor = '#ffffff';
-    iconEl.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="var(--error-color)" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>`;
+function formatoFechaLarga(fecha) {
+  if (!fecha) return "—";
+  const [y, m, d] = fecha.split("-");
+  const meses = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
+  return `${parseInt(d, 10)} ${meses[parseInt(m, 10) - 1]}, ${y}`;
+}
+
+function nombreMesActual() {
+  const meses = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
+  const d = new Date();
+  return `${meses[d.getMonth()]} ${d.getFullYear()}`;
+}
+
+function hoyISO() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function generarId(prefijo, lista, campoId) {
+  const nums = lista
+    .map(item => parseInt(String(item[campoId]).replace(/\D/g, ""), 10))
+    .filter(n => !isNaN(n));
+  const siguiente = (nums.length ? Math.max(...nums) : 0) + 1;
+  return `${prefijo}${String(siguiente).padStart(3, "0")}`;
+}
+
+function metaCategoria(cat) {
+  return CAT_META[cat] || { icon: "🏷️", bg: "#EDEDED", fg: "#555" };
+}
+
+function mostrarToast(mensaje, esError = false) {
+  const toast = document.getElementById("toast");
+  toast.textContent = mensaje;
+  toast.classList.toggle("error", esError);
+  toast.classList.add("show");
+  clearTimeout(mostrarToast._t);
+  mostrarToast._t = setTimeout(() => toast.classList.remove("show"), 2600);
+}
+
+function escapeHTML(str) {
+  const div = document.createElement("div");
+  div.textContent = str || "";
+  return div.innerHTML;
+}
+
+/* ---------------------------------------------------------
+   Capa de datos — Supabase o localStorage
+--------------------------------------------------------- */
+
+const db = {
+  async cargarPresupuesto() {
+    if (USE_SUPABASE) {
+      const { data, error } = await supabaseClient.from("presupuesto").select("*").order("categoria");
+      if (error) throw error;
+      return data || [];
+    }
+    return JSON.parse(localStorage.getItem(LS_PRESUPUESTO) || "[]");
+  },
+
+  async cargarMovimientos() {
+    if (USE_SUPABASE) {
+      const { data, error } = await supabaseClient.from("movimientos").select("*").order("fecha", { ascending: false });
+      if (error) throw error;
+      return data || [];
+    }
+    return JSON.parse(localStorage.getItem(LS_MOVIMIENTOS) || "[]");
+  },
+
+  async guardarPresupuestoCompleto(lista) {
+    if (!USE_SUPABASE) localStorage.setItem(LS_PRESUPUESTO, JSON.stringify(lista));
+  },
+
+  async guardarMovimientosCompleto(lista) {
+    if (!USE_SUPABASE) localStorage.setItem(LS_MOVIMIENTOS, JSON.stringify(lista));
+  },
+
+  async upsertPresupuesto(registro) {
+    if (USE_SUPABASE) {
+      const { error } = await supabaseClient.from("presupuesto").upsert(registro);
+      if (error) throw error;
+    }
+  },
+
+  async upsertMovimiento(registro) {
+    if (USE_SUPABASE) {
+      const { error } = await supabaseClient.from("movimientos").upsert(registro);
+      if (error) throw error;
+    }
+  },
+
+  async eliminarMovimiento(id) {
+    if (USE_SUPABASE) {
+      const { error } = await supabaseClient.from("movimientos").delete().eq("id_movimiento", id);
+      if (error) throw error;
+    }
   }
-  
-  alertEl.classList.add('active');
-  setTimeout(() => {
-    alertEl.classList.remove('active');
-  }, 3000);
-}
+};
 
-// --- CONEXIÓN Y PERSISTENCIA (LOCAL + SUPABASE) ---
+/* ---------------------------------------------------------
+   Inicialización
+--------------------------------------------------------- */
 
-// Init local state or populate defaults
-function initLocalData() {
-  const localBudget = localStorage.getItem('mi_presupuesto_budget');
-  const localMovs = localStorage.getItem('mi_presupuesto_movements');
-  
-  if (!localBudget) {
-    localStorage.setItem('mi_presupuesto_budget', JSON.stringify(INITIAL_BUDGET));
-    appState.presupuesto = [...INITIAL_BUDGET];
-  } else {
-    appState.presupuesto = JSON.parse(localBudget);
-  }
-  
-  if (!localMovs) {
-    localStorage.setItem('mi_presupuesto_movements', JSON.stringify(INITIAL_MOVEMENTS));
-    appState.movimientos = [...INITIAL_MOVEMENTS];
-  } else {
-    appState.movimientos = JSON.parse(localMovs);
-  }
-}
+async function iniciar() {
+  poblarPillsCategoria();
+  poblarSelectCategoria();
+  poblarGridCategoriaForm();
+  configurarEventos();
+  actualizarEstadoConexion("Cargando datos…", "");
 
-// Save back to LocalStorage
-function saveLocalState() {
-  localStorage.setItem('mi_presupuesto_budget', JSON.stringify(appState.presupuesto));
-  localStorage.setItem('mi_presupuesto_movements', JSON.stringify(appState.movimientos));
-}
+  try {
+    presupuestos = await db.cargarPresupuesto();
 
-// Init Supabase Connection
-function initSupabase() {
-  appState.supabaseUrl = localStorage.getItem('supabase_url') || '';
-  appState.supabaseKey = localStorage.getItem('supabase_key') || '';
-  
-  const statusEl = document.getElementById('supabase-sync-status');
-  const statusText = document.getElementById('sync-status-text');
-  
-  if (appState.supabaseUrl && appState.supabaseKey) {
-    try {
-      // Connect to global window.supabase if available
-      if (typeof supabase !== 'undefined') {
-        supabaseClient = supabase.createClient(appState.supabaseUrl, appState.supabaseKey);
-        appState.supabaseConnected = true;
-        
-        statusEl.className = 'sync-status-banner connected';
-        statusText.textContent = `Sincronizado con Supabase`;
-        
-        // Show fields in settings view
-        document.getElementById('supabase-url').value = appState.supabaseUrl;
-        document.getElementById('supabase-key').value = appState.supabaseKey;
-        document.getElementById('btn-disconnect-supabase').style.display = 'block';
-        
-        return true;
+    if (presupuestos.length === 0) {
+      presupuestos = CATEGORIAS.map((cat, i) => ({
+        id_presupuesto: `PRE${String(i + 1).padStart(3, "0")}`,
+        categoria: cat,
+        monto_presupuestado: PRESUPUESTO_PRECARGA[cat] || 0,
+        activo: "Si",
+        fecha_creacion: hoyISO()
+      }));
+      await db.guardarPresupuestoCompleto(presupuestos);
+      if (USE_SUPABASE) {
+        for (const p of presupuestos) await db.upsertPresupuesto(p);
       }
-    } catch (error) {
-      console.error('Error connecting to Supabase:', error);
-      statusEl.className = 'sync-status-banner error';
-      statusText.textContent = 'Error al conectar con Supabase';
     }
-  }
-  
-  // Default Offline Mode
-  supabaseClient = null;
-  appState.supabaseConnected = false;
-  statusEl.className = 'sync-status-banner local';
-  statusText.textContent = 'Usando base de datos local (Offline)';
-  document.getElementById('btn-disconnect-supabase').style.display = 'none';
-  return false;
-}
 
-// Sync Local state with Supabase State
-async function syncWithSupabase() {
-  if (!appState.supabaseConnected || !supabaseClient) return;
-  
-  try {
-    // 1. Fetch Budgets
-    const { data: remoteBudget, error: budgetError } = await supabaseClient
-      .from('presupuesto')
-      .select('*');
-      
-    if (budgetError) throw budgetError;
-    
-    // 2. Fetch Movements
-    const { data: remoteMovements, error: movementsError } = await supabaseClient
-      .from('movimientos')
-      .select('*');
-      
-    if (movementsError) throw movementsError;
-    
-    // Smart Syncing Logic:
-    // If Supabase is totally empty, populate it with current local state
-    if (remoteBudget.length === 0 && appState.presupuesto.length > 0) {
-      await supabaseClient.from('presupuesto').insert(appState.presupuesto);
-    } else if (remoteBudget.length > 0) {
-      appState.presupuesto = remoteBudget;
-    }
-    
-    if (remoteMovements.length === 0 && appState.movimientos.length > 0) {
-      await supabaseClient.from('movimientos').insert(appState.movimientos);
-    } else if (remoteMovements.length > 0) {
-      // Sort movements descending by date
-      appState.movimientos = remoteMovements.sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
-    }
-    
-    saveLocalState();
-    renderAllViews();
-    showToast('Base de datos sincronizada con Supabase');
-  } catch (error) {
-    console.error('Sync error:', error);
-    showToast('Error de sincronización. Creando tablas...', 'error');
-    // Try to trigger table creation reminder in UI
-  }
-}
+    movimientos = await db.cargarMovimientos();
 
-// Save single record (presupuesto or movimientos) to Supabase
-async function saveRecordSupabase(table, record) {
-  if (!appState.supabaseConnected || !supabaseClient) return;
-  try {
-    const idField = table === 'presupuesto' ? 'id_presupuesto' : 'id_movimiento';
-    const { error } = await supabaseClient
-      .from(table)
-      .upsert([record]);
-      
-    if (error) throw error;
+    actualizarEstadoConexion(
+      USE_SUPABASE ? "Conectado a Supabase" : "Guardando localmente en este navegador",
+      USE_SUPABASE ? "ok" : ""
+    );
   } catch (err) {
-    console.error('Supabase write error:', err);
-    showToast('Error de escritura en Supabase. Se guardó localmente.', 'error');
+    console.error(err);
+    actualizarEstadoConexion("Error al conectar con Supabase — revisa la configuración", "err");
+    mostrarToast("No se pudieron cargar los datos", true);
   }
+
+  renderTodo();
 }
 
-// Delete record in Supabase
-async function deleteRecordSupabase(table, id) {
-  if (!appState.supabaseConnected || !supabaseClient) return;
-  try {
-    const idField = table === 'presupuesto' ? 'id_presupuesto' : 'id_movimiento';
-    const { error } = await supabaseClient
-      .from(table)
-      .delete()
-      .eq(idField, id);
-      
-    if (error) throw error;
-  } catch (err) {
-    console.error('Supabase delete error:', err);
-  }
+function actualizarEstadoConexion(texto, clase) {
+  const el = document.getElementById("connStatus");
+  const txt = document.getElementById("connStatusText");
+  el.classList.remove("ok", "err");
+  if (clase) el.classList.add(clase);
+  txt.textContent = texto;
+  document.getElementById("perfilAlmacenamiento").textContent = USE_SUPABASE ? "Supabase" : "Este navegador";
 }
 
-// --- RENDERIZADO DE VISTAS (RENDERERS) ---
-
-function renderAllViews() {
-  renderDashboard();
-  renderCategoryFilters();
-  renderMovements();
-  renderBudgetList();
-  renderStatistics();
-}
-
-// 1. Dashboard summary calculation
-function renderDashboard() {
-  const monthlyExpenses = appState.movimientos
-    .filter(m => m.tipo === 'Gasto')
-    .reduce((sum, m) => sum + parseFloat(m.valor || 0), 0);
-    
-  const monthlyIncome = appState.movimientos
-    .filter(m => m.tipo === 'Ingreso')
-    .reduce((sum, m) => sum + parseFloat(m.valor || 0), 0);
-    
-  const totalBudgeted = appState.presupuesto
-    .filter(b => b.activo === 'Si')
-    .reduce((sum, b) => sum + parseFloat(b.monto_presupuestado || 0), 0);
-
-  const availableBalance = monthlyIncome - monthlyExpenses;
-
-  // Render on main view
-  document.getElementById('dashboard-spent-amount').textContent = formatCurrency(monthlyExpenses);
-  document.getElementById('dashboard-budgeted-total').textContent = formatCurrency(totalBudgeted);
-  document.getElementById('dashboard-available-total').textContent = formatCurrency(availableBalance);
-  
-  // Progress calculations
-  let percent = 0;
-  if (totalBudgeted > 0) {
-    percent = Math.round((monthlyExpenses / totalBudgeted) * 100);
-  }
-  
-  const fillEl = document.getElementById('dashboard-progress-fill');
-  const percentEl = document.getElementById('dashboard-progress-percent');
-  
-  fillEl.style.width = `${Math.min(percent, 100)}%`;
-  percentEl.textContent = `${percent}%`;
-  
-  // Visual threshold indicator (turn red if executing > 100% budget)
-  if (percent > 100) {
-    fillEl.style.backgroundColor = 'var(--error-color)';
-    percentEl.style.color = 'var(--error-color)';
-  } else {
-    fillEl.style.backgroundColor = 'var(--primary-color)';
-    percentEl.style.color = 'var(--primary-color)';
-  }
-}
-
-// 2. Horizontal filters in Dashboard list
-function renderCategoryFilters() {
-  const container = document.getElementById('category-filters-container');
-  container.innerHTML = '';
-  
-  const activeCategories = ['Todas', ...appState.presupuesto.map(b => b.categoria)];
-  
-  activeCategories.forEach(cat => {
-    const btn = document.createElement('button');
-    btn.className = `filter-capsule ${appState.activeCategoryFilter === cat ? 'active' : ''}`;
+function poblarPillsCategoria() {
+  const cont = document.getElementById("categoryPills");
+  cont.innerHTML = `<button class="pill active" data-cat="">Todas</button>`;
+  CATEGORIAS.forEach(cat => {
+    const btn = document.createElement("button");
+    btn.className = "pill";
+    btn.dataset.cat = cat;
     btn.textContent = cat;
-    btn.addEventListener('click', () => {
-      appState.activeCategoryFilter = cat;
-      renderCategoryFilters();
-      renderMovements();
+    cont.appendChild(btn);
+  });
+  cont.querySelectorAll(".pill").forEach(btn => {
+    btn.addEventListener("click", () => {
+      cont.querySelectorAll(".pill").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      filtroCategoria = btn.dataset.cat;
+      renderMovimientos();
     });
-    container.appendChild(btn);
   });
 }
 
-// 3. Movements list renderer with dynamic search/filters
-function renderMovements() {
-  const container = document.getElementById('movements-list-container');
-  const emptyState = document.getElementById('movements-empty-state');
-  container.innerHTML = '';
-  
-  let filtered = [...appState.movimientos];
-  
-  // Filter by category
-  if (appState.activeCategoryFilter !== 'Todas') {
-    filtered = filtered.filter(m => m.categoria === appState.activeCategoryFilter);
+function poblarSelectCategoria() {
+  const select = document.getElementById("catNombre");
+  CATEGORIAS.forEach(cat => {
+    const opt = document.createElement("option");
+    opt.value = cat;
+    opt.textContent = cat;
+    select.appendChild(opt);
+  });
+}
+
+function poblarGridCategoriaForm() {
+  const cont = document.getElementById("movCategoriaGrid");
+  cont.innerHTML = "";
+  CATEGORIAS.forEach(cat => {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "cat-pill";
+    btn.textContent = cat;
+    btn.dataset.cat = cat;
+    btn.addEventListener("click", () => {
+      cont.querySelectorAll(".cat-pill").forEach(b => b.classList.remove("selected"));
+      btn.classList.add("selected");
+      document.getElementById("movCategoria").value = cat;
+    });
+    cont.appendChild(btn);
+  });
+}
+
+/* ---------------------------------------------------------
+   Render principal
+--------------------------------------------------------- */
+
+function renderTodo() {
+  renderHero();
+  renderMovimientos();
+  renderPresupuesto();
+  renderEstadisticas();
+  renderPerfil();
+}
+
+function calcularTotales() {
+  const ingresos = movimientos.filter(m => m.tipo === "Ingreso").reduce((s, m) => s + Number(m.valor), 0);
+  const gastos = movimientos.filter(m => m.tipo === "Gasto").reduce((s, m) => s + Number(m.valor), 0);
+  const presupuestoTotal = presupuestos
+    .filter(p => p.activo === "Si")
+    .reduce((s, p) => s + Number(p.monto_presupuestado), 0);
+  const saldo = ingresos - gastos;
+  const ejecucionGlobal = presupuestoTotal > 0 ? (gastos / presupuestoTotal) * 100 : 0;
+  return { ingresos, gastos, presupuestoTotal, saldo, ejecucionGlobal };
+}
+
+function renderHero() {
+  const { ingresos, gastos, presupuestoTotal, ejecucionGlobal } = calcularTotales();
+  const label = document.getElementById("heroLabel");
+  const number = document.getElementById("heroNumber");
+  const progressRow = document.getElementById("heroProgressRow");
+  const percent = document.getElementById("heroPercent");
+  const fill = document.getElementById("heroBarFill");
+
+  if (filtroTipo === "Gasto") {
+    label.textContent = "GASTOS DE ESTE MES";
+    number.textContent = formatoCOP(gastos);
+    progressRow.style.display = "flex";
+    const pct = Math.min(ejecucionGlobal, 100);
+    fill.style.width = `${pct}%`;
+    fill.className = "bar-fill" + (ejecucionGlobal >= 100 ? " over" : ejecucionGlobal >= 80 ? " warn" : "");
+    percent.textContent = `${ejecucionGlobal.toFixed(0)}%`;
+  } else {
+    label.textContent = "INGRESOS DE ESTE MES";
+    number.textContent = formatoCOP(ingresos);
+    progressRow.style.display = "none";
   }
-  
-  // Filter by transaction type
-  if (appState.activeTypeFilter !== 'Todos') {
-    filtered = filtered.filter(m => m.tipo === appState.activeTypeFilter);
+}
+
+function renderMovimientos() {
+  const grid = document.getElementById("movimientosList");
+  const vacio = document.getElementById("movimientosVacio");
+  const finLista = document.getElementById("finLista");
+  grid.innerHTML = "";
+
+  let lista = movimientos.filter(m => m.tipo === filtroTipo);
+  if (filtroCategoria) lista = lista.filter(m => m.categoria === filtroCategoria);
+
+  lista.sort((a, b) => ordenDesc
+    ? (b.fecha || "").localeCompare(a.fecha || "")
+    : (a.fecha || "").localeCompare(b.fecha || ""));
+
+  vacio.hidden = lista.length !== 0;
+  finLista.hidden = lista.length === 0;
+
+  lista.forEach(m => {
+    const meta = metaCategoria(m.categoria);
+    const card = document.createElement("button");
+    card.type = "button";
+    card.className = "item-card";
+    card.innerHTML = `
+      <span class="item-icon" style="background:${meta.bg}">${meta.icon}</span>
+      <span class="item-main">
+        <p class="item-title">${escapeHTML(m.descripcion)}</p>
+        <span class="item-meta">
+          <span class="item-badge" style="background:${meta.bg};color:${meta.fg}">${m.categoria.toUpperCase()}</span>
+          <span class="item-date">${formatoFechaCorta(m.fecha)}</span>
+        </span>
+      </span>
+      <span class="item-right">
+        <span class="item-amount ${m.tipo}">${m.tipo === "Ingreso" ? "+" : ""}${formatoCOP(m.valor)}</span>
+        <span class="item-chevron">›</span>
+      </span>
+    `;
+    card.addEventListener("click", () => abrirDetalle(m.id_movimiento));
+    grid.appendChild(card);
+  });
+}
+
+function renderPresupuesto() {
+  const cont = document.getElementById("presupuestoLista");
+  cont.innerHTML = "";
+
+  const total = presupuestos
+    .filter(p => p.activo === "Si")
+    .reduce((s, p) => s + Number(p.monto_presupuestado), 0);
+  document.getElementById("presupuestoTotalTexto").textContent = formatoCOP(total);
+
+  const ordenados = [...presupuestos].sort((a, b) => a.categoria.localeCompare(b.categoria));
+
+  ordenados.forEach(p => {
+    const meta = metaCategoria(p.categoria);
+    const row = document.createElement("div");
+    row.className = "item-card";
+    row.innerHTML = `
+      <span class="item-icon" style="background:${meta.bg}">${meta.icon}</span>
+      <span class="item-main">
+        <p class="item-title">${p.categoria}</p>
+        <span class="item-date">${formatoCOP(p.monto_presupuestado)}</span>
+      </span>
+      <span class="budget-row-actions">
+        <span class="budget-toggle ${p.activo === "Si" ? "on" : "off"}">${p.activo === "Si" ? "Activo" : "Inactivo"}</span>
+        <button class="budget-edit-btn" type="button" data-edit-cat="${p.id_presupuesto}">✎</button>
+      </span>
+    `;
+    cont.appendChild(row);
+  });
+
+  cont.querySelectorAll("[data-edit-cat]").forEach(btn => {
+    btn.addEventListener("click", () => abrirModalCategoria(btn.dataset.editCat));
+  });
+}
+
+function renderEstadisticas() {
+  const { ingresos, gastos, saldo, ejecucionGlobal } = calcularTotales();
+  document.getElementById("statIngresos").textContent = formatoCOP(ingresos);
+  document.getElementById("statGastos").textContent = formatoCOP(gastos);
+  document.getElementById("statSaldo").textContent = formatoCOP(saldo);
+  document.getElementById("statEjecucion").textContent = `${ejecucionGlobal.toFixed(0)}%`;
+
+  const cont = document.getElementById("ejecucionList");
+  cont.innerHTML = "";
+
+  const activos = presupuestos.filter(p => p.activo === "Si").sort((a, b) => a.categoria.localeCompare(b.categoria));
+
+  activos.forEach(p => {
+    const gastoCategoria = movimientos
+      .filter(m => m.tipo === "Gasto" && m.categoria === p.categoria)
+      .reduce((s, m) => s + Number(m.valor), 0);
+
+    const presupuestado = Number(p.monto_presupuestado);
+    const pct = presupuestado > 0 ? (gastoCategoria / presupuestado) * 100 : (gastoCategoria > 0 ? 100 : 0);
+
+    let barClase = "";
+    if (pct >= 100) barClase = "over";
+    else if (pct >= 80) barClase = "warn";
+
+    const row = document.createElement("div");
+    row.className = "ejecucion-row";
+    row.innerHTML = `
+      <div class="ejecucion-top">
+        <span class="cat-name">${p.categoria}</span>
+        <span class="cat-figures">${formatoCOP(gastoCategoria)} / ${formatoCOP(presupuestado)} · ${pct.toFixed(0)}%</span>
+      </div>
+      <div class="bar-track">
+        <div class="bar-fill ${barClase}" style="width:${Math.min(pct, 100)}%"></div>
+      </div>
+    `;
+    cont.appendChild(row);
+  });
+
+  if (activos.length === 0) {
+    cont.innerHTML = `<p style="color:var(--ink-soft);font-size:13px;">No hay categorías activas en el presupuesto.</p>`;
   }
-  
-  if (filtered.length === 0) {
-    emptyState.style.display = 'flex';
+}
+
+function renderPerfil() {
+  document.getElementById("perfilCategorias").textContent = presupuestos.filter(p => p.activo === "Si").length;
+  document.getElementById("perfilMovimientos").textContent = movimientos.length;
+  document.getElementById("perfilMes").textContent = nombreMesActual();
+}
+
+/* ---------------------------------------------------------
+   Navegación (vistas + nav inferior)
+--------------------------------------------------------- */
+
+function configurarNav() {
+  document.querySelectorAll(".nav-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      document.querySelectorAll(".nav-btn").forEach(b => b.classList.remove("active"));
+      document.querySelectorAll(".view").forEach(v => v.classList.remove("active"));
+      btn.classList.add("active");
+      document.getElementById(`view-${btn.dataset.view}`).classList.add("active");
+      document.getElementById("btnFab").style.display = btn.dataset.view === "gastos" ? "flex" : "none";
+    });
+  });
+}
+
+/* ---------------------------------------------------------
+   Toggle Gasto / Ingreso (hero)
+--------------------------------------------------------- */
+
+function configurarHeroToggle() {
+  document.querySelectorAll("#heroToggle .toggle-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      document.querySelectorAll("#heroToggle .toggle-btn").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      filtroTipo = btn.dataset.tipo;
+      renderHero();
+      renderMovimientos();
+    });
+  });
+}
+
+/* ---------------------------------------------------------
+   Pantallas completas (movimiento / detalle)
+--------------------------------------------------------- */
+
+function abrirScreen(id) {
+  document.getElementById(id).hidden = false;
+  document.body.style.overflow = "hidden";
+}
+function cerrarScreen(id) {
+  document.getElementById(id).hidden = true;
+  document.body.style.overflow = "";
+}
+
+function abrirModal(id) {
+  document.getElementById(id).hidden = false;
+  document.body.style.overflow = "hidden";
+}
+function cerrarModal(id) {
+  document.getElementById(id).hidden = true;
+  document.body.style.overflow = "";
+}
+
+function configurarCierres() {
+  document.querySelectorAll("[data-close-screen]").forEach(btn => {
+    btn.addEventListener("click", () => cerrarScreen(btn.dataset.closeScreen));
+  });
+  document.querySelectorAll("[data-close-modal]").forEach(btn => {
+    btn.addEventListener("click", () => cerrarModal(btn.dataset.closeModal));
+  });
+  document.querySelectorAll(".modal-overlay").forEach(overlay => {
+    overlay.addEventListener("click", e => { if (e.target === overlay) cerrarModal(overlay.id); });
+  });
+  document.addEventListener("keydown", e => {
+    if (e.key !== "Escape") return;
+    document.querySelectorAll(".modal-overlay").forEach(o => { if (!o.hidden) cerrarModal(o.id); });
+    document.querySelectorAll(".screen-overlay").forEach(o => { if (!o.hidden) cerrarScreen(o.id); });
+  });
+}
+
+/* ---------------------------------------------------------
+   Toggle Gasto / Ingreso dentro del formulario
+--------------------------------------------------------- */
+
+function configurarTipoToggleForm() {
+  document.querySelectorAll("#movTipoToggle .toggle-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      document.querySelectorAll("#movTipoToggle .toggle-btn").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      document.getElementById("movTipo").value = btn.dataset.tipo;
+      document.getElementById("screenMovimientoTitulo").textContent =
+        btn.dataset.tipo === "Gasto" ? "Nuevo gasto" : "Nuevo ingreso";
+    });
+  });
+}
+
+/* ---------------------------------------------------------
+   CRUD Movimientos
+--------------------------------------------------------- */
+
+function abrirFormularioNuevo(tipoInicial) {
+  document.getElementById("formMovimiento").reset();
+  document.getElementById("movId").value = "";
+  document.getElementById("movFecha").value = hoyISO();
+  document.getElementById("movEstado").value = "Pagado";
+  document.getElementById("movCategoria").value = "";
+  document.getElementById("movBorradorTag").hidden = false;
+  document.querySelectorAll("#movCategoriaGrid .cat-pill").forEach(b => b.classList.remove("selected"));
+
+  const tipo = tipoInicial || "Gasto";
+  document.getElementById("movTipo").value = tipo;
+  document.querySelectorAll("#movTipoToggle .toggle-btn").forEach(b => {
+    b.classList.toggle("active", b.dataset.tipo === tipo);
+  });
+  document.getElementById("screenMovimientoTitulo").textContent = tipo === "Gasto" ? "Nuevo gasto" : "Nuevo ingreso";
+
+  abrirScreen("screenMovimiento");
+}
+
+function abrirFormularioEditar(id) {
+  const m = movimientos.find(x => x.id_movimiento === id);
+  if (!m) return;
+
+  document.getElementById("movId").value = m.id_movimiento;
+  document.getElementById("movTipo").value = m.tipo;
+  document.querySelectorAll("#movTipoToggle .toggle-btn").forEach(b => {
+    b.classList.toggle("active", b.dataset.tipo === m.tipo);
+  });
+  document.getElementById("movDescripcion").value = m.descripcion;
+  document.getElementById("movObservaciones").value = m.observaciones || "";
+  document.getElementById("movValor").value = m.valor;
+  document.getElementById("movFecha").value = m.fecha;
+  document.getElementById("movEstado").value = m.estado || "Pagado";
+  document.getElementById("movComprobante").value = m.comprobante_url || "";
+  document.getElementById("movCategoria").value = m.categoria;
+  document.querySelectorAll("#movCategoriaGrid .cat-pill").forEach(b => {
+    b.classList.toggle("selected", b.dataset.cat === m.categoria);
+  });
+  document.getElementById("screenMovimientoTitulo").textContent = m.tipo === "Gasto" ? "Editar gasto" : "Editar ingreso";
+  document.getElementById("movBorradorTag").hidden = true;
+
+  abrirScreen("screenMovimiento");
+}
+
+async function manejarSubmitMovimiento(e) {
+  e.preventDefault();
+  const id = document.getElementById("movId").value;
+  const esNuevo = !id;
+
+  const registro = {
+    id_movimiento: id || generarId("MOV", movimientos, "id_movimiento"),
+    fecha: document.getElementById("movFecha").value,
+    tipo: document.getElementById("movTipo").value,
+    categoria: document.getElementById("movCategoria").value,
+    descripcion: document.getElementById("movDescripcion").value.trim(),
+    valor: Number(document.getElementById("movValor").value),
+    estado: document.getElementById("movEstado").value,
+    observaciones: document.getElementById("movObservaciones").value.trim(),
+    comprobante_url: document.getElementById("movComprobante").value.trim(),
+    fecha_actualizacion: hoyISO()
+  };
+
+  if (!registro.descripcion || !registro.valor || !registro.fecha || !registro.categoria) {
+    mostrarToast("Completa los campos obligatorios (título, monto, categoría y fecha)", true);
     return;
   }
-  
-  emptyState.style.display = 'none';
-  
-  filtered.forEach(mov => {
-    const meta = CATEGORY_META[mov.categoria] || DEFAULT_META;
-    
-    const card = document.createElement('div');
-    card.className = 'movement-card';
-    card.setAttribute('data-id', mov.id_movimiento);
-    
-    card.innerHTML = `
-      <div class="movement-left">
-        <div class="category-icon-box" style="background-color: ${meta.color};">
-          ${meta.icon}
-        </div>
-        <div class="movement-info">
-          <span class="movement-title">${mov.descripcion}</span>
-          <div class="movement-meta-row">
-            <span class="category-badge" style="background-color: ${meta.textBg}; color: ${meta.color};">${mov.categoria}</span>
-            <span class="movement-date">${formatDateDisplay(mov.fecha)}</span>
-            ${mov.estado === 'Pendiente' ? '<span class="category-badge" style="background-color: var(--pending-bg); color: var(--pending-color);">Pendiente</span>' : ''}
+
+  try {
+    await db.upsertMovimiento(registro);
+
+    if (esNuevo) {
+      movimientos.push(registro);
+    } else {
+      const idx = movimientos.findIndex(m => m.id_movimiento === id);
+      movimientos[idx] = registro;
+    }
+    await db.guardarMovimientosCompleto(movimientos);
+
+    cerrarScreen("screenMovimiento");
+    renderTodo();
+    mostrarToast(esNuevo ? "Movimiento registrado" : "Movimiento actualizado");
+  } catch (err) {
+    console.error(err);
+    mostrarToast("No se pudo guardar el movimiento", true);
+  }
+}
+
+function abrirDetalle(id) {
+  const m = movimientos.find(x => x.id_movimiento === id);
+  if (!m) return;
+  const meta = metaCategoria(m.categoria);
+
+  document.getElementById("screenDetalleTitulo").textContent = m.descripcion;
+
+  const presupuestoCat = presupuestos.find(p => p.categoria === m.categoria);
+  let bloquePresupuesto = "";
+
+  if (m.tipo === "Gasto" && presupuestoCat) {
+    const gastoCategoria = movimientos
+      .filter(x => x.tipo === "Gasto" && x.categoria === m.categoria)
+      .reduce((s, x) => s + Number(x.valor), 0);
+    const presupuestado = Number(presupuestoCat.monto_presupuestado);
+    const pct = presupuestado > 0 ? (gastoCategoria / presupuestado) * 100 : 0;
+    const pctClase = pct >= 100 ? "over" : pct >= 80 ? "warn" : "";
+
+    bloquePresupuesto = `
+      <div class="detalle-section">
+        <div class="detalle-section-head">📊 Presupuesto de categoría</div>
+        <div class="detalle-budget-card">
+          <div class="detalle-budget-top">
+            <div>
+              <div class="cat">${m.categoria}</div>
+              <div class="mes">${nombreMesActual()}</div>
+            </div>
+            <div class="pct ${pctClase}">${pct.toFixed(0)}%</div>
+          </div>
+          <div class="bar-track"><div class="bar-fill ${pctClase}" style="width:${Math.min(pct, 100)}%"></div></div>
+          <div class="detalle-budget-figures">
+            <span>Gasto actual: <strong>${formatoCOP(gastoCategoria)}</strong></span>
+            <span>Límite: <strong>${formatoCOP(presupuestado)}</strong></span>
           </div>
         </div>
       </div>
-      <div class="movement-right">
-        <span class="movement-value ${mov.tipo === 'Ingreso' ? 'income' : 'expense'}">
-          ${mov.tipo === 'Ingreso' ? '+' : ''}${formatCurrency(mov.valor)}
-        </span>
-        <div class="movement-chevron">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"></polyline></svg>
-        </div>
-      </div>
     `;
-    
-    card.addEventListener('click', () => {
-      openTransactionDetail(mov.id_movimiento);
-    });
-    
-    container.appendChild(card);
-  });
-}
-
-// 4. Budget grid on Presupuesto view
-function renderBudgetList() {
-  const container = document.getElementById('budget-items-container');
-  container.innerHTML = '';
-  
-  // Total stats calculations
-  const totalBudgeted = appState.presupuesto
-    .filter(b => b.activo === 'Si')
-    .reduce((sum, b) => sum + parseFloat(b.monto_presupuestado || 0), 0);
-    
-  const monthlyExpenses = appState.movimientos
-    .filter(m => m.tipo === 'Gasto')
-    .reduce((sum, m) => sum + parseFloat(m.valor || 0), 0);
-    
-  document.getElementById('budget-total-amount').textContent = formatCurrency(totalBudgeted);
-  document.getElementById('budget-spent-amount').textContent = formatCurrency(monthlyExpenses);
-
-  appState.presupuesto.forEach(item => {
-    const meta = CATEGORY_META[item.categoria] || DEFAULT_META;
-    
-    // Sum movements under this specific category
-    const spentInCategory = appState.movimientos
-      .filter(m => m.tipo === 'Gasto' && m.categoria === item.categoria)
-      .reduce((sum, m) => sum + parseFloat(m.valor || 0), 0);
-      
-    let percent = 0;
-    if (item.monto_presupuestado > 0) {
-      percent = Math.round((spentInCategory / item.monto_presupuestado) * 100);
-    }
-    
-    let barColor = 'var(--primary-color)';
-    if (percent > 100) barColor = 'var(--error-color)';
-    else if (percent > 80) barColor = 'var(--pending-color)';
-    
-    const card = document.createElement('div');
-    card.className = `budget-card ${item.activo !== 'Si' ? 'inactive' : ''}`;
-    
-    card.innerHTML = `
-      <div class="budget-card-top">
-        <div style="display:flex; align-items:center; gap:10px;">
-          <div class="category-icon-box" style="width: 32px; height: 32px; min-width:32px; border-radius: 8px; background-color: ${meta.color};">
-            ${meta.icon}
-          </div>
-          <span class="budget-card-title">${item.categoria} ${item.activo !== 'Si' ? '<span style="font-size:0.75rem; color:var(--text-light);">(Inactivo)</span>' : ''}</span>
-        </div>
-        <div class="budget-card-vals">
-          <span class="budget-card-limit">${formatCurrency(item.monto_presupuestado)}</span>
-          <br>
-          <span class="budget-card-spent">Gastado: ${formatCurrency(spentInCategory)}</span>
-        </div>
-      </div>
-      
-      ${item.activo === 'Si' ? `
-      <div class="budget-card-bar-row">
-        <div class="budget-card-progress">
-          <div class="budget-card-progress-fill" style="width: ${Math.min(percent, 100)}%; background-color: ${barColor};"></div>
-        </div>
-        <span class="budget-card-percent" style="color: ${barColor};">${percent}%</span>
-      </div>
-      ` : ''}
-    `;
-    
-    // Edit budget handler
-    card.addEventListener('click', () => {
-      openEditBudgetModal(item);
-    });
-    
-    container.appendChild(card);
-  });
-}
-
-// 5. Statistics dashboard and Breakdown calculations
-function renderStatistics() {
-  const totalIncome = appState.movimientos
-    .filter(m => m.tipo === 'Ingreso')
-    .reduce((sum, m) => sum + parseFloat(m.valor || 0), 0);
-    
-  const totalExpense = appState.movimientos
-    .filter(m => m.tipo === 'Gasto')
-    .reduce((sum, m) => sum + parseFloat(m.valor || 0), 0);
-    
-  const totalBalance = totalIncome - totalExpense;
-  
-  document.getElementById('stats-total-income').textContent = formatCurrency(totalIncome);
-  document.getElementById('stats-total-expense').textContent = formatCurrency(totalExpense);
-  document.getElementById('stats-total-balance').textContent = formatCurrency(totalBalance);
-  
-  const balanceCard = document.querySelector('.stats-summary-card.balance');
-  if (totalBalance < 0) {
-    balanceCard.style.borderLeftColor = 'var(--error-color)';
-    document.getElementById('stats-total-balance').style.color = 'var(--error-color)';
-  } else {
-    balanceCard.style.borderLeftColor = 'var(--primary-color)';
-    document.getElementById('stats-total-balance').style.color = 'var(--primary-color)';
   }
 
-  // Calculate percentage share for each category
-  const breakdownContainer = document.getElementById('stats-breakdown-list');
-  breakdownContainer.innerHTML = '';
-  
-  const expenseCategories = {};
-  appState.movimientos
-    .filter(m => m.tipo === 'Gasto')
-    .forEach(m => {
-      expenseCategories[m.categoria] = (expenseCategories[m.categoria] || 0) + parseFloat(m.valor || 0);
-    });
-    
-  const sortedExpenses = Object.keys(expenseCategories)
-    .map(cat => ({ category: cat, value: expenseCategories[cat] }))
-    .sort((a, b) => b.value - a.value);
-    
-  if (sortedExpenses.length === 0) {
-    breakdownContainer.innerHTML = '<p style="text-align:center; color:var(--text-light); font-size:0.85rem;">Registra gastos para ver el desglose.</p>';
+  const bloqueComprobante = m.comprobante_url
+    ? `<a class="detalle-link-box" href="${escapeHTML(m.comprobante_url)}" target="_blank" rel="noopener">📎 Ver comprobante<strong>${escapeHTML(m.comprobante_url)}</strong></a>`
+    : `<div class="detalle-link-box">📎 Sin comprobante adjunto</div>`;
+
+  document.getElementById("detalleContenido").innerHTML = `
+    <div class="detalle-hero">
+      <span class="detalle-hero-icon">${meta.icon}</span>
+      <div class="detalle-label">Total del ${m.tipo === "Gasto" ? "gasto" : "ingreso"}</div>
+      <div class="detalle-amount">${formatoCOP(m.valor)}</div>
+      <div class="detalle-badges">
+        <span class="detalle-badge">${m.categoria}</span>
+        <span class="detalle-badge">${formatoFechaLarga(m.fecha)}</span>
+        <span class="detalle-badge">${m.estado || "—"}</span>
+      </div>
+    </div>
+
+    <div class="detalle-section">
+      <div class="detalle-section-head">☰ Descripción</div>
+      <p class="detalle-text">${escapeHTML(m.observaciones) || "Sin observaciones adicionales."}</p>
+    </div>
+
+    ${bloquePresupuesto}
+
+    <div class="detalle-section">
+      <div class="detalle-section-head">📎 Comprobante</div>
+      ${bloqueComprobante}
+    </div>
+  `;
+
+  document.getElementById("btnEditarDesdeDetalle").onclick = () => {
+    cerrarScreen("screenDetalle");
+    abrirFormularioEditar(id);
+  };
+  document.getElementById("btnEliminarDesdeDetalle").onclick = () => {
+    cerrarScreen("screenDetalle");
+    solicitarEliminacion(id);
+  };
+
+  abrirScreen("screenDetalle");
+}
+
+function solicitarEliminacion(id) {
+  idParaEliminar = id;
+  abrirModal("modalConfirmar");
+}
+
+async function confirmarEliminacion() {
+  if (!idParaEliminar) return;
+  try {
+    await db.eliminarMovimiento(idParaEliminar);
+    movimientos = movimientos.filter(m => m.id_movimiento !== idParaEliminar);
+    await db.guardarMovimientosCompleto(movimientos);
+    cerrarModal("modalConfirmar");
+    renderTodo();
+    mostrarToast("Movimiento eliminado");
+  } catch (err) {
+    console.error(err);
+    mostrarToast("No se pudo eliminar el movimiento", true);
+  } finally {
+    idParaEliminar = null;
+  }
+}
+
+/* ---------------------------------------------------------
+   CRUD Presupuesto
+--------------------------------------------------------- */
+
+function abrirModalCategoria(id) {
+  const form = document.getElementById("formCategoria");
+  form.reset();
+
+  if (id) {
+    const p = presupuestos.find(x => x.id_presupuesto === id);
+    document.getElementById("catId").value = p.id_presupuesto;
+    document.getElementById("catNombre").value = p.categoria;
+    document.getElementById("catMonto").value = p.monto_presupuestado;
+    document.getElementById("catActivo").checked = p.activo === "Si";
+    document.getElementById("modalCategoriaTitulo").textContent = "Editar categoría";
+  } else {
+    document.getElementById("catId").value = "";
+    document.getElementById("catActivo").checked = true;
+    document.getElementById("modalCategoriaTitulo").textContent = "Añadir categoría";
+  }
+  abrirModal("modalCategoria");
+}
+
+async function manejarSubmitCategoria(e) {
+  e.preventDefault();
+  const id = document.getElementById("catId").value;
+  const categoria = document.getElementById("catNombre").value;
+
+  const existente = presupuestos.find(p => p.categoria === categoria && p.id_presupuesto !== id);
+  if (existente) {
+    mostrarToast("Esa categoría ya existe en el presupuesto", true);
     return;
   }
-  
-  sortedExpenses.forEach(item => {
-    const meta = CATEGORY_META[item.category] || DEFAULT_META;
-    const sharePercent = totalExpense > 0 ? Math.round((item.value / totalExpense) * 100) : 0;
-    
-    const breakdownItem = document.createElement('div');
-    breakdownItem.className = 'breakdown-item';
-    
-    breakdownItem.innerHTML = `
-      <div class="breakdown-info">
-        <span class="breakdown-name-badge">
-          <span class="breakdown-dot" style="background-color: ${meta.color};"></span>
-          ${item.category}
-        </span>
-        <span class="breakdown-amounts">
-          ${formatCurrency(item.value)}
-          <span class="breakdown-percentage">(${sharePercent}%)</span>
-        </span>
-      </div>
-      <div class="breakdown-progress">
-        <div class="breakdown-progress-fill" style="width: ${sharePercent}%; background-color: ${meta.color};"></div>
-      </div>
-    `;
-    
-    breakdownContainer.appendChild(breakdownItem);
-  });
-}
 
-// --- ACCIONES Y NAVEGACIÓN ---
+  const registro = {
+    id_presupuesto: id || generarId("PRE", presupuestos, "id_presupuesto"),
+    categoria,
+    monto_presupuestado: Number(document.getElementById("catMonto").value),
+    activo: document.getElementById("catActivo").checked ? "Si" : "No",
+    fecha_creacion: id ? presupuestos.find(p => p.id_presupuesto === id).fecha_creacion : hoyISO()
+  };
 
-// Navigation tabs routing
-function setupViewsNavigation() {
-  const navItems = document.querySelectorAll('.bottom-nav .nav-item');
-  const views = document.querySelectorAll('.app-content .app-view');
-  
-  navItems.forEach(item => {
-    item.addEventListener('click', () => {
-      const viewId = item.getAttribute('data-view');
-      
-      // Update nav active state
-      navItems.forEach(i => i.classList.remove('active'));
-      item.classList.add('active');
-      
-      // Toggle view layouts
-      views.forEach(view => {
-        if (view.id === `view-${viewId}`) {
-          view.classList.add('active');
-        } else {
-          view.classList.remove('active');
-        }
-      });
-      
-      appState.currentView = viewId;
-      
-      // Update view specific analytics
-      if (viewId === 'estadisticas') {
-        renderStatistics();
-      } else if (viewId === 'presupuesto') {
-        renderBudgetList();
-      }
-    });
-  });
-}
+  try {
+    await db.upsertPresupuesto(registro);
 
-// Setup Transaction Form Categories badging in Modals
-function renderModalCategorySelector() {
-  const container = document.getElementById('modal-category-grid');
-  container.innerHTML = '';
-  
-  const categories = appState.presupuesto.map(b => b.categoria);
-  
-  categories.forEach(cat => {
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.className = 'category-badge-btn';
-    btn.textContent = cat;
-    btn.setAttribute('data-category', cat);
-    
-    btn.addEventListener('click', () => {
-      // Toggle selected
-      document.querySelectorAll('.category-badge-btn').forEach(b => b.classList.remove('selected'));
-      btn.classList.add('selected');
-      document.getElementById('trans-categoria').value = cat;
-    });
-    
-    container.appendChild(btn);
-  });
-}
-
-// Modals Trigger helpers
-function toggleModal(modalId, show = true) {
-  const modal = document.getElementById(modalId);
-  if (show) {
-    modal.classList.add('active');
-  } else {
-    modal.classList.remove('active');
-  }
-}
-
-// Open Transaction detail card
-function openTransactionDetail(id) {
-  const movement = appState.movimientos.find(m => m.id_movimiento === id);
-  if (!movement) return;
-  
-  appState.selectedTransactionId = id;
-  
-  const meta = CATEGORY_META[movement.categoria] || DEFAULT_META;
-  
-  // Set amounts and description
-  document.getElementById('detail-title').textContent = movement.descripcion;
-  document.getElementById('detail-val-text').textContent = formatCurrency(movement.valor);
-  document.getElementById('detail-val-label').textContent = movement.tipo === 'Ingreso' ? 'TOTAL DEL INGRESO' : 'TOTAL DEL GASTO';
-  
-  // Category badging & details
-  document.getElementById('detail-category-badge').textContent = movement.categoria;
-  document.getElementById('detail-category-badge').style.color = meta.color;
-  document.getElementById('detail-category-badge').style.backgroundColor = meta.textBg;
-  
-  // Format Date fully
-  const dateObj = new Date(movement.fecha + 'T00:00:00');
-  const fullDateStr = dateObj.toLocaleDateString('es-CO', { day: 'numeric', month: 'long', year: 'numeric' });
-  document.getElementById('detail-date-badge').textContent = fullDateStr;
-  
-  // State Badge
-  const stateBadge = document.getElementById('detail-state-badge');
-  stateBadge.textContent = movement.estado;
-  if (movement.estado === 'Pagado') {
-    stateBadge.style.color = 'var(--success-color)';
-    stateBadge.style.backgroundColor = 'var(--success-bg)';
-  } else {
-    stateBadge.style.color = 'var(--pending-color)';
-    stateBadge.style.backgroundColor = 'var(--pending-bg)';
-  }
-  
-  // Icon block background matching category color
-  const iconContainer = document.getElementById('detail-category-icon-box');
-  iconContainer.style.backgroundColor = meta.color;
-  iconContainer.innerHTML = meta.icon;
-  
-  // Description and observations content
-  document.getElementById('detail-desc-text').textContent = movement.descripcion;
-  
-  const obsEl = document.getElementById('detail-notes-value');
-  obsEl.textContent = movement.observaciones || 'Sin observaciones';
-  
-  // Receipt Digital attachment trigger
-  const receiptEl = document.getElementById('detail-receipt-value');
-  const receiptCard = document.getElementById('btn-view-receipt');
-  if (movement.comprobante_url) {
-    receiptEl.textContent = 'Ver comprobante';
-    receiptCard.style.display = 'flex';
-    receiptCard.onclick = () => window.open(movement.comprobante_url, '_blank');
-  } else {
-    receiptEl.textContent = 'Sin adjunto';
-    receiptCard.style.display = 'flex';
-    receiptCard.onclick = null;
-  }
-  
-  // Render Category budget progress context inside detail card
-  const budgetItem = appState.presupuesto.find(b => b.categoria === movement.categoria);
-  const spentInCategory = appState.movimientos
-    .filter(m => m.tipo === 'Gasto' && m.categoria === movement.categoria)
-    .reduce((sum, m) => sum + parseFloat(m.valor || 0), 0);
-    
-  const budgetContextCard = document.querySelector('.budget-context-card');
-  
-  if (budgetItem && movement.tipo === 'Gasto') {
-    budgetContextCard.style.display = 'block';
-    
-    let percent = 0;
-    if (budgetItem.monto_presupuestado > 0) {
-      percent = Math.round((spentInCategory / budgetItem.monto_presupuestado) * 100);
-    }
-    
-    document.getElementById('detail-budget-cat-name').textContent = `${movement.categoria} • Julio`;
-    document.getElementById('detail-budget-percent-val').textContent = `${percent}%`;
-    document.getElementById('detail-budget-progress-fill').style.width = `${Math.min(percent, 100)}%`;
-    document.getElementById('detail-budget-spent-val').textContent = formatCurrency(spentInCategory);
-    document.getElementById('detail-budget-limit-val').textContent = formatCurrency(budgetItem.monto_presupuestado);
-    
-    let fillCol = 'var(--primary-color)';
-    if (percent > 100) fillCol = 'var(--error-color)';
-    document.getElementById('detail-budget-progress-fill').style.backgroundColor = fillCol;
-    document.getElementById('detail-budget-percent-val').style.color = fillCol;
-  } else {
-    // Hide context card if income or category budget missing
-    budgetContextCard.style.display = 'none';
-  }
-  
-  // Toggle detail modal
-  toggleModal('modal-transaction-detail', true);
-}
-
-// Open and load empty form
-function openNewTransactionForm(type = 'Gasto') {
-  document.getElementById('form-transaction').reset();
-  document.getElementById('trans-id').value = '';
-  document.getElementById('trans-action-type').value = 'create';
-  document.getElementById('transaction-modal-title').textContent = type === 'Gasto' ? 'Nuevo gasto' : 'Nuevo ingreso';
-  
-  // Reset buttons status
-  const isGasto = type === 'Gasto';
-  document.getElementById('btn-type-gasto').className = `type-btn ${isGasto ? 'active' : ''}`;
-  document.getElementById('btn-type-ingreso').className = `type-btn ${!isGasto ? 'active' : ''}`;
-  document.getElementById('trans-tipo').value = type;
-  
-  // Categories badge render reset
-  renderModalCategorySelector();
-  document.getElementById('trans-categoria').value = '';
-  
-  // Populate Date (Default Today)
-  const today = new Date().toISOString().substring(0, 10);
-  document.getElementById('trans-fecha').value = today;
-  document.getElementById('label-selected-date').textContent = 'Hoy, ' + formatDateDisplay(today);
-  
-  // Reset receipt attachment status
-  document.getElementById('label-receipt-status').textContent = 'Adjuntar URL';
-  document.getElementById('trans-comprobante-url').value = '';
-  
-  // Set default estado radios
-  document.querySelector('input[name="trans-estado"][value="Pagado"]').checked = true;
-  
-  document.getElementById('btn-save-transaction-text').textContent = isGasto ? 'Guardar gasto' : 'Guardar ingreso';
-  
-  toggleModal('modal-transaction-form', true);
-}
-
-// Populate form to edit
-function openEditTransactionForm(id) {
-  const mov = appState.movimientos.find(m => m.id_movimiento === id);
-  if (!mov) return;
-  
-  document.getElementById('trans-id').value = mov.id_movimiento;
-  document.getElementById('trans-action-type').value = 'edit';
-  document.getElementById('transaction-modal-title').textContent = mov.tipo === 'Gasto' ? 'Editar gasto' : 'Editar ingreso';
-  
-  const isGasto = mov.tipo === 'Gasto';
-  document.getElementById('btn-type-gasto').className = `type-btn ${isGasto ? 'active' : ''}`;
-  document.getElementById('btn-type-ingreso').className = `type-btn ${!isGasto ? 'active' : ''}`;
-  document.getElementById('trans-tipo').value = mov.tipo;
-  
-  document.getElementById('trans-val').value = mov.valor;
-  document.getElementById('trans-desc').value = mov.descripcion;
-  
-  // Category loading & badge auto select
-  renderModalCategorySelector();
-  document.getElementById('trans-categoria').value = mov.categoria;
-  const badgeBtn = document.querySelector(`.category-badge-btn[data-category="${mov.categoria}"]`);
-  if (badgeBtn) badgeBtn.classList.add('selected');
-  
-  // Date loading
-  document.getElementById('trans-fecha').value = mov.fecha;
-  document.getElementById('label-selected-date').textContent = formatDateDisplay(mov.fecha);
-  
-  // Receipt loading
-  document.getElementById('trans-comprobante-url').value = mov.comprobante_url || '';
-  document.getElementById('label-receipt-status').textContent = mov.comprobante_url ? 'Modificar URL' : 'Adjuntar URL';
-  
-  // Estado checking
-  document.querySelector(`input[name="trans-estado"][value="${mov.estado}"]`).checked = true;
-  
-  // Observations
-  document.getElementById('trans-observaciones').value = mov.observaciones || '';
-  
-  document.getElementById('btn-save-transaction-text').textContent = 'Guardar cambios';
-  
-  // Close detail and open form modal
-  toggleModal('modal-transaction-detail', false);
-  toggleModal('modal-transaction-form', true);
-}
-
-// Open Budget editing modal
-function openEditBudgetModal(item) {
-  document.getElementById('budget-cat-id').value = item.id_presupuesto;
-  document.getElementById('budget-cat-name-label').textContent = item.categoria;
-  document.getElementById('budget-cat-amount-input').value = item.monto_presupuestado;
-  
-  document.querySelector(`input[name="budget-cat-activo"][value="${item.activo}"]`).checked = true;
-  
-  toggleModal('modal-edit-budget', true);
-}
-
-// --- CONTROLADORES DE EVENTOS (EVENT LISTENERS) ---
-function setupEventListeners() {
-  
-  // Bottom views toggling
-  setupViewsNavigation();
-  
-  // Floating Action Button (FAB) and Quick add triggers
-  document.getElementById('fab-add-expense').addEventListener('click', () => openNewTransactionForm('Gasto'));
-  document.getElementById('btn-quick-add').addEventListener('click', () => openNewTransactionForm('Gasto'));
-  
-  // Transaction type toggle btns inside form
-  document.getElementById('btn-type-gasto').addEventListener('click', () => {
-    document.getElementById('btn-type-gasto').classList.add('active');
-    document.getElementById('btn-type-ingreso').classList.remove('active');
-    document.getElementById('trans-tipo').value = 'Gasto';
-    document.getElementById('transaction-modal-title').textContent = 'Nuevo gasto';
-    document.getElementById('btn-save-transaction-text').textContent = 'Guardar gasto';
-  });
-  
-  document.getElementById('btn-type-ingreso').addEventListener('click', () => {
-    document.getElementById('btn-type-ingreso').classList.add('active');
-    document.getElementById('btn-type-gasto').classList.remove('active');
-    document.getElementById('trans-tipo').value = 'Ingreso';
-    document.getElementById('transaction-modal-title').textContent = 'Nuevo ingreso';
-    document.getElementById('btn-save-transaction-text').textContent = 'Guardar ingreso';
-  });
-  
-  // Category toggle display expanded
-  document.getElementById('btn-view-all-categories').addEventListener('click', () => {
-    const grid = document.getElementById('modal-category-grid');
-    grid.classList.toggle('expanded');
-    const text = document.getElementById('btn-view-all-categories');
-    text.textContent = grid.classList.contains('expanded') ? 'Ver menos' : 'Ver todas';
-  });
-  
-  // Date selector card trigger
-  document.getElementById('card-date-picker').addEventListener('click', () => {
-    const input = document.getElementById('trans-fecha');
-    input.style.display = 'block';
-    input.focus();
-    input.click();
-    input.style.display = 'none'; // hide back
-  });
-  
-  document.getElementById('trans-fecha').addEventListener('change', (e) => {
-    document.getElementById('label-selected-date').textContent = formatDateDisplay(e.target.value);
-  });
-  
-  // Receipt selector card trigger
-  document.getElementById('card-receipt-uploader').addEventListener('click', () => {
-    const url = prompt('Ingresa la URL del comprobante o recibo digital:', document.getElementById('trans-comprobante-url').value);
-    if (url !== null) {
-      document.getElementById('trans-comprobante-url').value = url;
-      document.getElementById('label-receipt-status').textContent = url ? 'Modificar URL' : 'Adjuntar URL';
-      showToast(url ? 'Comprobante enlazado correctamente' : 'Comprobante removido');
-    }
-  });
-
-  // Modal details drop down options menu toggle
-  document.getElementById('btn-detail-options').addEventListener('click', (e) => {
-    e.stopPropagation();
-    const dropdown = document.getElementById('detail-options-dropdown');
-    dropdown.style.display = dropdown.style.display === 'none' ? 'block' : 'none';
-  });
-  
-  document.addEventListener('click', () => {
-    document.getElementById('detail-options-dropdown').style.display = 'none';
-  });
-  
-  // Option Menu Edit trigger
-  document.getElementById('btn-detail-edit').addEventListener('click', () => {
-    openEditTransactionForm(appState.selectedTransactionId);
-  });
-  
-  // Option Menu Delete trigger
-  document.getElementById('btn-detail-delete').addEventListener('click', () => {
-    toggleModal('modal-delete-confirm', true);
-  });
-
-  // Cancel deletion
-  document.getElementById('btn-cancel-delete').addEventListener('click', () => {
-    toggleModal('modal-delete-confirm', false);
-  });
-  
-  // Confirm deletion
-  document.getElementById('btn-confirm-delete').addEventListener('click', async () => {
-    const id = appState.selectedTransactionId;
-    if (!id) return;
-    
-    // Save locally
-    appState.movimientos = appState.movimientos.filter(m => m.id_movimiento !== id);
-    saveLocalState();
-    
-    // Save to Supabase
-    if (appState.supabaseConnected) {
-      await deleteRecordSupabase('movimientos', id);
-    }
-    
-    renderAllViews();
-    
-    toggleModal('modal-delete-confirm', false);
-    toggleModal('modal-transaction-detail', false);
-    showToast('Movimiento eliminado correctamente');
-  });
-
-  // Close Modals buttons triggers
-  document.getElementById('btn-close-transaction-modal').addEventListener('click', () => {
-    toggleModal('modal-transaction-form', false);
-  });
-  
-  document.querySelectorAll('.btn-close-detail').forEach(btn => {
-    btn.addEventListener('click', () => {
-      toggleModal('modal-transaction-detail', false);
-    });
-  });
-  
-  document.getElementById('btn-close-budget-modal').addEventListener('click', () => {
-    toggleModal('modal-edit-budget', false);
-  });
-
-  // Transaction form submit handler
-  document.getElementById('form-transaction').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    
-    const action = document.getElementById('trans-action-type').value;
-    const val = parseFloat(document.getElementById('trans-val').value) || 0;
-    const desc = document.getElementById('trans-desc').value.trim();
-    const tipo = document.getElementById('trans-tipo').value;
-    const categoria = document.getElementById('trans-categoria').value;
-    const fecha = document.getElementById('trans-fecha').value;
-    const comprobanteUrl = document.getElementById('trans-comprobante-url').value.trim();
-    const estado = document.querySelector('input[name="trans-estado"]:checked').value;
-    const observaciones = document.getElementById('trans-observaciones').value.trim();
-    
-    if (!categoria) {
-      showToast('Por favor selecciona una categoría', 'error');
-      return;
-    }
-    
-    let transactionRecord;
-    
-    if (action === 'create') {
-      transactionRecord = {
-        id_movimiento: generateId('MOV'),
-        fecha,
-        tipo,
-        categoria,
-        descripcion: desc,
-        valor: val,
-        estado,
-        observaciones,
-        comprobante_url: comprobanteUrl,
-        fecha_actualizacion: null
-      };
-      
-      appState.movimientos.unshift(transactionRecord);
-      showToast('Movimiento registrado correctamente');
+    if (id) {
+      const idx = presupuestos.findIndex(p => p.id_presupuesto === id);
+      presupuestos[idx] = registro;
     } else {
-      const id = document.getElementById('trans-id').value;
-      const index = appState.movimientos.findIndex(m => m.id_movimiento === id);
-      
-      if (index !== -1) {
-        transactionRecord = {
-          ...appState.movimientos[index],
-          fecha,
-          tipo,
-          categoria,
-          descripcion: desc,
-          valor: val,
-          estado,
-          observaciones,
-          comprobante_url: comprobanteUrl,
-          fecha_actualizacion: new Date().toISOString().substring(0, 10)
-        };
-        
-        appState.movimientos[index] = transactionRecord;
-        showToast('Movimiento actualizado');
-      }
+      presupuestos.push(registro);
     }
-    
-    // Sort array
-    appState.movimientos.sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
-    
-    // Save data
-    saveLocalState();
-    
-    if (appState.supabaseConnected) {
-      await saveRecordSupabase('movimientos', transactionRecord);
-    }
-    
-    renderAllViews();
-    toggleModal('modal-transaction-form', false);
-  });
+    await db.guardarPresupuestoCompleto(presupuestos);
 
-  // Budget Category Editing submission
-  document.getElementById('form-edit-budget').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    
-    const id = document.getElementById('budget-cat-id').value;
-    const amount = parseFloat(document.getElementById('budget-cat-amount-input').value) || 0;
-    const activo = document.querySelector('input[name="budget-cat-activo"]:checked').value;
-    
-    const index = appState.presupuesto.findIndex(b => b.id_presupuesto === id);
-    if (index !== -1) {
-      const updatedBudget = {
-        ...appState.presupuesto[index],
-        monto_presupuestado: amount,
-        activo
-      };
-      
-      appState.presupuesto[index] = updatedBudget;
-      saveLocalState();
-      
-      if (appState.supabaseConnected) {
-        await saveRecordSupabase('presupuesto', updatedBudget);
-      }
-      
-      renderAllViews();
-      showToast('Presupuesto de categoría actualizado');
-    }
-    
-    toggleModal('modal-edit-budget', false);
-  });
-
-  // Supabase Configuration Connection submission
-  document.getElementById('form-supabase-config').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    
-    const url = document.getElementById('supabase-url').value.trim();
-    const key = document.getElementById('supabase-key').value.trim();
-    
-    localStorage.setItem('supabase_url', url);
-    localStorage.setItem('supabase_key', key);
-    
-    if (initSupabase()) {
-      showToast('Conectando a Supabase...');
-      await syncWithSupabase();
-    } else {
-      showToast('Error al conectar. Verifica los datos.', 'error');
-    }
-  });
-
-  // Supabase Disconnect handler
-  document.getElementById('btn-disconnect-supabase').addEventListener('click', () => {
-    localStorage.removeItem('supabase_url');
-    localStorage.removeItem('supabase_key');
-    document.getElementById('form-supabase-config').reset();
-    initSupabase();
-    renderAllViews();
-    showToast('Supabase desconectado');
-  });
-
-  // Filter Transactions by Type toggler (filter icon)
-  document.getElementById('btn-toggle-type-filter').addEventListener('click', () => {
-    const types = ['Todos', 'Gasto', 'Ingreso'];
-    const currentIdx = types.indexOf(appState.activeTypeFilter);
-    const nextIdx = (currentIdx + 1) % types.length;
-    appState.activeTypeFilter = types[nextIdx];
-    
-    const iconBtn = document.getElementById('btn-toggle-type-filter');
-    if (appState.activeTypeFilter === 'Todos') {
-      iconBtn.style.color = 'var(--text-muted)';
-      showToast('Mostrando todos los movimientos');
-    } else {
-      iconBtn.style.color = 'var(--primary-color)';
-      showToast(`Filtrado por: ${appState.activeTypeFilter}s`);
-    }
-    
-    renderMovements();
-  });
-
-  // System actions: Reset initial Demo data
-  document.getElementById('btn-reset-demo-data').addEventListener('click', async () => {
-    if (confirm('¿Estás seguro de restablecer al presupuesto de prueba? Esto sobrescribirá tus datos locales.')) {
-      appState.presupuesto = [...INITIAL_BUDGET];
-      appState.movimientos = [...INITIAL_MOVEMENTS];
-      saveLocalState();
-      
-      if (appState.supabaseConnected) {
-        showToast('Restableciendo en Supabase...');
-        for (const item of INITIAL_BUDGET) {
-          await saveRecordSupabase('presupuesto', item);
-        }
-        for (const mov of INITIAL_MOVEMENTS) {
-          await saveRecordSupabase('movimientos', mov);
-        }
-      }
-      
-      renderAllViews();
-      showToast('Datos demo restaurados con éxito');
-    }
-  });
-
-  // System actions: Clear all database
-  document.getElementById('btn-clear-all-data').addEventListener('click', async () => {
-    if (confirm('¡ADVERTENCIA CRÍTICA! ¿Estás seguro de que deseas borrar absolutamente todos los datos? Esta acción es irreversible.')) {
-      appState.movimientos = [];
-      // Set budgets to 0 limit
-      appState.presupuesto = appState.presupuesto.map(b => ({ ...b, monto_presupuestado: 0 }));
-      saveLocalState();
-      
-      if (appState.supabaseConnected) {
-        showToast('Limpiando Supabase...');
-        try {
-          // Fetch IDs to delete
-          const { data: movs } = await supabaseClient.from('movimientos').select('id_movimiento');
-          if (movs && movs.length > 0) {
-            for (const m of movs) {
-              await deleteRecordSupabase('movimientos', m.id_movimiento);
-            }
-          }
-          for (const b of appState.presupuesto) {
-            await saveRecordSupabase('presupuesto', b);
-          }
-        } catch (err) {
-          console.error(err);
-        }
-      }
-      
-      renderAllViews();
-      showToast('Base de datos restablecida a ceros');
-    }
-  });
-
+    cerrarModal("modalCategoria");
+    renderTodo();
+    mostrarToast(id ? "Categoría actualizada" : "Categoría añadida");
+  } catch (err) {
+    console.error(err);
+    mostrarToast("No se pudo guardar la categoría", true);
+  }
 }
 
-// --- CONTROL DE CARGA INICIAL (STARTUP) ---
-document.addEventListener('DOMContentLoaded', () => {
-  // 1. Load Local State
-  initLocalData();
-  
-  // 2. Initialize connection to Supabase if configured
-  initSupabase();
-  
-  // 3. Sync if connected
-  if (appState.supabaseConnected) {
-    syncWithSupabase();
-  }
-  
-  // 4. Bind listeners
-  setupEventListeners();
-  
-  // 5. Render interface initial states
-  renderAllViews();
-});
+/* ---------------------------------------------------------
+   Eventos generales
+--------------------------------------------------------- */
 
-const supabaseUrl = "https://gvcvemixhsjqrcixtndk.supabase.co";
+function configurarEventos() {
+  configurarNav();
+  configurarHeroToggle();
+  configurarCierres();
+  configurarTipoToggleForm();
 
-const supabaseKey = "sb_publishable_5XtGzgRT5eds3fCo6iE_BA_eKlfG1ue";
+  document.getElementById("btnHeaderAdd").addEventListener("click", () => abrirFormularioNuevo("Gasto"));
+  document.getElementById("btnFab").addEventListener("click", () => abrirFormularioNuevo("Gasto"));
+  document.getElementById("formMovimiento").addEventListener("submit", manejarSubmitMovimiento);
 
-const supabase = window.supabase.createClient(
-    supabaseUrl,
-    supabaseKey
-);
+  document.getElementById("btnOrdenar").addEventListener("click", () => {
+    ordenDesc = !ordenDesc;
+    renderMovimientos();
+  });
+
+  document.getElementById("btnConfirmarEliminar").addEventListener("click", confirmarEliminacion);
+
+  document.getElementById("btnNuevaCategoria").addEventListener("click", () => abrirModalCategoria(null));
+  document.getElementById("formCategoria").addEventListener("submit", manejarSubmitCategoria);
+}
+
+document.addEventListener("DOMContentLoaded", iniciar);
