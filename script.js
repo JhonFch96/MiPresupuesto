@@ -1247,3 +1247,12 @@ document.addEventListener('DOMContentLoaded', () => {
   // 5. Render interface initial states
   renderAllViews();
 });
+
+const supabaseUrl = "https://gvcvemixhsjqrcixtndk.supabase.co";
+
+const supabaseKey = "sb_publishable_5XtGzgRT5eds3fCo6iE_BA_eKlfG1ue";
+
+const supabase = window.supabase.createClient(
+    supabaseUrl,
+    supabaseKey
+);
