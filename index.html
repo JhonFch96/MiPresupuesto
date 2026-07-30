@@ -18,7 +18,10 @@
   <header class="app-header">
     <div class="header-left">
       <span class="app-logo">🧾</span>
-      <h1>Mi Presupuesto</h1>
+      <div>
+        <h1>Mi Presupuesto</h1>
+        <p class="header-saldo" id="headerSaldo">Saldo disponible: $0</p>
+      </div>
     </div>
     <button class="header-add" id="btnHeaderAdd" type="button" aria-label="Nuevo gasto">+</button>
   </header>
@@ -197,7 +200,7 @@
     <label class="field-label" for="movValor">MONTO</label>
     <div class="amount-input">
       <span class="amount-sign">$</span>
-      <input type="number" id="movValor" min="0" step="1000" placeholder="0.00" required>
+      <input type="number" id="movValor" min="1" step="1" placeholder="0" required>
     </div>
 
     <label class="field-label" for="movDescripcion">TÍTULO</label>
@@ -287,11 +290,7 @@
       </label>
       <label class="field-full">
         Monto presupuestado (COP)
-        <input type="number" id="catMonto" min="0" step="1000" required>
-      </label>
-      <label class="field-full checkbox-field">
-        <input type="checkbox" id="catActivo" checked>
-        Activo este mes
+        <input type="number" id="catMonto" min="1" step="1" required>
       </label>
       <div class="modal-actions">
         <button type="button" class="btn btn-ghost" data-close-modal="modalCategoria">Cancelar</button>

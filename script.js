@@ -54,7 +54,8 @@ if (USE_SUPABASE) {
 
 const CATEGORIAS = [
   "Servicios", "Suscripciones", "Moto", "Prestamos", "Tarjeta de Credito",
-  "Mercado", "Personal", "Pareja", "Oficina", "Universidad", "Familia", "Apartamento"
+  "Mercado", "Personal", "Pareja", "Oficina", "Universidad", "Familia", "Apartamento",
+  "Nomina", "Varios"
 ];
 
 const PRESUPUESTO_PRECARGA = {
@@ -69,7 +70,9 @@ const PRESUPUESTO_PRECARGA = {
   "Universidad": 2000000,
   "Familia": 200000,
   "Personal": 200000,
-  "Apartamento": 1120000
+  "Apartamento": 1120000,
+  "Nomina": 0,
+  "Varios": 0
 };
 
 // Icono + color pastel por categoría, para los avatares tipo mockup
@@ -85,7 +88,9 @@ const CAT_META = {
   "Oficina":             { icon: "💼", bg: "#EDE3D6", fg: "#795B2E" },
   "Universidad":         { icon: "🎓", bg: "#E0E5FB", fg: "#3B4C99" },
   "Familia":             { icon: "👪", bg: "#DFF3EE", fg: "#227A63" },
-  "Apartamento":         { icon: "🏠", bg: "#FBF3D0", fg: "#8A7414" }
+  "Apartamento":         { icon: "🏠", bg: "#FBF3D0", fg: "#8A7414" },
+  "Nomina":              { icon: "💰", bg: "#DFF7E3", fg: "#1F7A3C" },
+  "Varios":              { icon: "🔖", bg: "#EFE9E1", fg: "#6B5B4A" }
 };
 
 const LS_PRESUPUESTO = "mp_presupuesto";
@@ -247,6 +252,24 @@ async function iniciar() {
 
     movimientos = await db.cargarMovimientos();
 
+    // Sincroniza categorías nuevas del modelo (ej. Nomina, Varios) con presupuestos ya guardados
+    const categoriasExistentes = presupuestos.map(p => p.categoria);
+    const faltantes = CATEGORIAS.filter(cat => !categoriasExistentes.includes(cat));
+    if (faltantes.length > 0) {
+      for (const cat of faltantes) {
+        const nueva = {
+          id_presupuesto: generarId("PRE", presupuestos, "id_presupuesto"),
+          categoria: cat,
+          monto_presupuestado: PRESUPUESTO_PRECARGA[cat] || 0,
+          activo: "Si",
+          fecha_creacion: hoyISO()
+        };
+        presupuestos.push(nueva);
+        if (USE_SUPABASE) await db.upsertPresupuesto(nueva);
+      }
+      await db.guardarPresupuestoCompleto(presupuestos);
+    }
+
     actualizarEstadoConexion(
       USE_SUPABASE ? "Conectado a Supabase" : "Guardando localmente en este navegador",
       USE_SUPABASE ? "ok" : ""
@@ -322,11 +345,19 @@ function poblarGridCategoriaForm() {
 --------------------------------------------------------- */
 
 function renderTodo() {
+  renderHeaderSaldo();
   renderHero();
   renderMovimientos();
   renderPresupuesto();
   renderEstadisticas();
   renderPerfil();
+}
+
+function renderHeaderSaldo() {
+  const { saldo } = calcularTotales();
+  const el = document.getElementById("headerSaldo");
+  el.textContent = `Saldo disponible: ${formatoCOP(saldo)}`;
+  el.classList.toggle("negativo", saldo < 0);
 }
 
 function calcularTotales() {
@@ -425,7 +456,6 @@ function renderPresupuesto() {
         <span class="item-date">${formatoCOP(p.monto_presupuestado)}</span>
       </span>
       <span class="budget-row-actions">
-        <span class="budget-toggle ${p.activo === "Si" ? "on" : "off"}">${p.activo === "Si" ? "Activo" : "Inactivo"}</span>
         <button class="budget-edit-btn" type="button" data-edit-cat="${p.id_presupuesto}">✎</button>
       </span>
     `;
@@ -639,8 +669,8 @@ async function manejarSubmitMovimiento(e) {
     fecha_actualizacion: hoyISO()
   };
 
-  if (!registro.descripcion || !registro.valor || !registro.fecha || !registro.categoria) {
-    mostrarToast("Completa los campos obligatorios (título, monto, categoría y fecha)", true);
+  if (!registro.descripcion || !registro.fecha || !registro.categoria || !(registro.valor > 0)) {
+    mostrarToast("Completa título, categoría, fecha y un monto mayor a 0", true);
     return;
   }
 
@@ -779,11 +809,9 @@ function abrirModalCategoria(id) {
     document.getElementById("catId").value = p.id_presupuesto;
     document.getElementById("catNombre").value = p.categoria;
     document.getElementById("catMonto").value = p.monto_presupuestado;
-    document.getElementById("catActivo").checked = p.activo === "Si";
     document.getElementById("modalCategoriaTitulo").textContent = "Editar categoría";
   } else {
     document.getElementById("catId").value = "";
-    document.getElementById("catActivo").checked = true;
     document.getElementById("modalCategoriaTitulo").textContent = "Añadir categoría";
   }
   abrirModal("modalCategoria");
@@ -804,7 +832,7 @@ async function manejarSubmitCategoria(e) {
     id_presupuesto: id || generarId("PRE", presupuestos, "id_presupuesto"),
     categoria,
     monto_presupuestado: Number(document.getElementById("catMonto").value),
-    activo: document.getElementById("catActivo").checked ? "Si" : "No",
+    activo: "Si",
     fecha_creacion: id ? presupuestos.find(p => p.id_presupuesto === id).fecha_creacion : hoyISO()
   };
 
